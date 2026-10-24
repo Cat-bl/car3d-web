@@ -147,48 +147,6 @@ button.chip { font-family: inherit; line-height: inherit; background: transparen
 .portrait .stats.n3 .st:nth-child(3), .portrait .stats.n4 .st:nth-child(3) { padding-left: 0; border-left: 0; }
 .portrait .st b { font-size: .44rem; }
 
-/* ===== 第二页：3D 唱片机 —— 暗色暖光，背景按封面颜色晕染（两层交替淡入淡出） ===== */
-.pg-vinyl { --ink: #f5f1ea; --mute: rgba(245, 241, 234, .55); color: var(--ink); }
-.pg-vinyl .bg { background: #0f0e0d; }
-.glow { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
-.glow.on { opacity: 1; }
-.v-meta { position: absolute; left: 55%; right: .44rem; top: .98rem; }
-.v-state { display: flex; align-items: center; font-size: .2rem; color: var(--mute); letter-spacing: .1em; }
-.v-state::before { content: ""; width: .1rem; height: .1rem; margin-right: .1rem; border-radius: 50%; background: #ffb067; }
-.v-state.paused::before { background: rgba(245, 241, 234, .35); }
-.v-title { margin-top: .16rem; font-size: .46rem; font-weight: 700; line-height: 1.22; letter-spacing: .01em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.v-artist { margin-top: .1rem; font-size: .26rem; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 歌词：整首排成一列（vinyl.js 每换一句把整列平移到当前句，位移用像素），当前句亮、放大一点；上下边缘渐隐 */
-.v-lyrics { position: absolute; left: 55%; right: .44rem; top: 2.9rem; bottom: 1.66rem; overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 70%, transparent 100%); }
-.v-ly { position: relative; padding-right: .3rem; transition: transform .6s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
-.v-ly p { margin: 0 0 .18rem; font-size: .3rem; font-weight: 600; line-height: 1.4; color: var(--mute); opacity: .75; transform-origin: 0 50%;
-  transition: color .4s ease, opacity .4s ease, transform .4s cubic-bezier(.2, .8, .2, 1); }
-.v-ly p.on { color: var(--ink); opacity: 1; transform: scale(1.08); }
-.v-ctl { position: absolute; left: 55%; right: .44rem; bottom: .5rem; display: flex; align-items: center; }
-.v-btn { display: flex; align-items: center; justify-content: center; width: .8rem; height: .8rem; margin-right: .2rem; padding: .22rem; border: 1px solid rgba(245, 241, 234, .2); border-radius: 50%;
-  background: transparent; color: var(--ink); outline: none; pointer-events: auto; cursor: pointer; -webkit-appearance: none; appearance: none; transition: transform .12s ease; }
-.v-btn.big { width: 1rem; height: 1rem; padding: .28rem; border: 0; background: var(--ink); color: #1a1714; }
-.v-btn:active { transform: scale(.9); }
-.v-btn svg { display: block; width: 100%; height: 100%; fill: currentColor; }
-.v-btn .i-pause, .v-btn.playing .i-play { display: none; }
-.v-btn.playing .i-pause { display: block; }
-.v-btn.off { display: none; }
-.v-empty { display: none; position: absolute; left: 55%; right: .44rem; top: 46%; font-size: .26rem; color: var(--mute); }
-.pg-vinyl.empty .v-empty { display: block; }
-.pg-vinyl.empty .v-meta, .pg-vinyl.empty .v-lyrics, .pg-vinyl.empty .v-ctl { display: none; }
-.portrait .v-meta { left: .3rem; right: .3rem; top: auto; bottom: 3rem; text-align: center; }
-.portrait .v-state { justify-content: center; }
-.portrait .v-title { margin-top: .1rem; font-size: .36rem; -webkit-line-clamp: 1; }
-.portrait .v-artist { font-size: .24rem; }
-.portrait .v-lyrics { left: .3rem; right: .3rem; top: auto; bottom: 1.46rem; height: 1.5rem; text-align: center;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%); } /* 竖屏：上一句、当前句、下一句 */
-.portrait .v-ly { padding: 0 .2rem; }
-.portrait .v-ly p { margin-bottom: .1rem; font-size: .24rem; transform-origin: 50% 50%; }
-.portrait .v-ctl { left: 0; right: 0; bottom: .36rem; justify-content: center; }
-.portrait .v-btn { margin: 0 .14rem; }
-.portrait .v-empty { left: 0; right: 0; top: auto; bottom: 1.6rem; text-align: center; }
-
 /* ===== 设置：右上角齿轮 + 面板（面板一直是深色，强调色 --acc 跟着车漆颜色） ===== */
 .set-btn { position: absolute; right: .26rem; top: .45rem; z-index: 5; width: .56rem; height: .56rem; padding: .12rem; border: 0; border-radius: 50%;
   background: rgba(255, 255, 255, .1); color: #fff; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none;
@@ -303,7 +261,6 @@ button.chip { font-family: inherit; line-height: inherit; background: transparen
 .guide-head { display: flex; align-items: center; justify-content: space-between; }
 .guide-step { font-size: .2rem; letter-spacing: .18em; color: var(--g-mute); }
 .guide-x { flex: none; width: .5rem; height: .5rem; padding: .13rem; border: 0; border-radius: 50%; background: var(--g-x); color: var(--g-ink); outline: none; -webkit-appearance: none; appearance: none; }
-.guide.must .guide-x { display: none; } /* 第一次打开：要看完，没有关闭；设置里重新查看时才有 */
 .guide-x svg { display: block; width: 100%; height: 100%; fill: currentColor; }
 .guide-tip b { display: block; margin-top: .02rem; padding-right: .1rem; font-size: .34rem; font-weight: 700; letter-spacing: .04em; }
 .guide-tip p { margin: .1rem .1rem 0 0; font-size: .22rem; line-height: 1.55; color: var(--g-mute); }

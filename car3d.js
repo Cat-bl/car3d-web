@@ -138,7 +138,7 @@
     hitBox = new T.Box3(V(-1.1, 0, -2.4), V(1.1, 1.3, 2.4));
     cur = {}; want = {}; view.az = HOME.az; view.el = HOME.el; view.vaz = 0; view.homing = false;
     doorSeen = {}; doorOpen = []; doorV = null; doorDue = doorEnd = 0; doorBoot = true; pin = null; tyreOff = false; // 回到车况页时门还开着、胎压还异常：进场完了照样转过去
-    asides = {}; // 从唱片机页滑回来时调试面板、全部车况还开着
+    asides = {}; // 重新建车况页时调试面板、全部车况还开着
     if (window.D3DebugPanel && D3DebugPanel.isOpen()) asides.dbg = 1;
     if (window.D3CarInfo && D3CarInfo.isOpen()) asides.info = 1;
     dbgOn = Object.keys(asides).length > 0;
@@ -296,7 +296,7 @@
     if (envRoom) envRoom.dispose();
     if (keyLight) keyLight.shadow.dispose(); // 阴影贴图不在场景树的材质里，上面释放不到（以前每切一次页漏一张）
     envRoom = null; std = false;
-    app.renderer().toneMapping = T.ACESFilmicToneMapping; // 唱片机页照旧
+    app.renderer().toneMapping = T.ACESFilmicToneMapping; // 恢复默认
     scene = camera = envRT = root = M = parts = wheels = modelObj = LS = page.scene = page.camera = null;
     nightW = false; nightK = 0; el.classList.remove('night');
     wheelN = 0; marks = []; flashes = []; force = {}; rec = null;

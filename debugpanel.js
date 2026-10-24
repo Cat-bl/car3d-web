@@ -111,7 +111,7 @@
   }
   function media() {
     var m = D.get('m', 'playing');
-    var h = '<div class="dbg-play"><button type="button" class="act pri" data-a="play">' + (m ? '暂停' : '播放') + '</button><span class="set-note">播放时像车机一样每换一句歌词推一次快照；歌、播放状态都可以在卡片的唱片机上按</span></div>';
+    var h = '<div class="dbg-play"><button type="button" class="act pri" data-a="play">' + (m ? '暂停' : '播放') + '</button><span class="set-note">播放时像车机一样每换一句歌词推一次快照（氛围灯开着音乐律动时车况页才订媒体）</span></div>';
     return h + ['track', 'lyrics'].concat(C.media.map(function (f) { return f.k; })).map(function (k) { return item('m', k); }).join('');
   }
   function host() {

@@ -1,14 +1,13 @@
-/* demo3d 新手引导：第一次打开卡片（本地没记过 d3-guide）时，等车况页建好、进场动画走完，一步步介绍：
-   左右滑换页 → 拖动转车 → 车况显示在车上 → 底部数据 → 挂 D 挡看胎压 → 设置 → 导入车模，
-   再用默认车模把"调整车模"演示一遍：打开调整车模、看认出了什么 → 点车看是什么零件 → 进一项（车门）→ 点零件 → 圈出来 → 从列表选 → 试开 → 拖铰链的中心点 →
-   到另一扇门的页一键镜像 → 车灯换颜色和效果（亮度、地面光束）→ 完成或取消。
+/* demo3d 新手引导：第一次打开（本地没记过 d3-guide）时，等车况页建好、进场动画走完，只讲调整车模（网页版现在只用来给原生版做车模包）：
+   导入车模，再用默认车模把"调整车模"演示一遍：打开调整车模、看认出了什么 → 点车看是什么零件 → 进一项（车门）→ 点零件 → 圈出来 → 从列表选 → 试开 → 拖铰链的中心点 →
+   到另一扇门的页一键镜像 → 车灯换颜色和效果（亮度、地面光束）→ 车牌 → 完成、导出车模包。第一次看也能随时关掉（右上角关闭 = 跳过）。
    演示的那几步由引导自己操作：屏幕上一个"手指"移到要点的地方按一下（按钮直接点，车上的点、涂交给 D3Car、D3Sel），
    操作的时候遮罩变淡、说明气泡先收起来，做完亮框移到结果上、气泡再出来。演示改的东西不存：结束时取消调整车模；
    用的是自己导入的车模（或调整过的默认车模）时先临时换成默认车模（D3Car.demo），结束时换回来。
    遮罩上留一个圆角亮框框住要讲的东西（亮框外一圈呼吸光；换步骤时亮框平滑移过去），旁边一个说明气泡（第几步、标题、说明、进度、下一步，右上角关闭 = 跳过），
    样式同设置面板、跟着车况页深浅色变；引导开着时每帧看一眼目标的位置，车转了、拖了中缝、横竖屏切换时亮框和气泡跟着走（没变就不动），
    点屏幕任意处也是下一步（演示操作还没做完时不算）。看完或跳过就记住，第一次以后不再自己出现；
-   设置里"重新查看引导"（act:guide）随时再看一遍：关掉设置、回到车况页再开始。引导开着时页面不接手势（main.js 不处理 .guide 里的触摸）。全部 ES5。 */
+   设置里"重新查看引导"（act:guide）随时再看一遍：设置面板不关（第一步就讲设置里的导入车模），等车况页建好再开始。引导开着时页面不接手势（main.js 不处理 .guide 里的触摸）。全部 ES5。 */
 (function () {
   'use strict';
   var KEY = 'd3-guide';
@@ -29,20 +28,8 @@
   var tool = function (v) { return inTune('[data-a="tool"][data-v="' + v + '"]'); };
 
   var STEPS, ALL = [
-    { el: function () { return union($('dots').children); }, pad: 0.1, title: '左右滑动换页', two: true,
-      text: '这张卡片有两页：3D 车况和 3D 唱片机。在屏幕上左右滑动就能切换，上面的圆点表示现在在第几页。' },
-    { el: function () { return D3.focusRect(); }, pad: 0.06, title: '转着看车',
-      text: '按住车身左右拖动可以旋转，上下拖改变俯视角度；双击回到默认角度。喜欢的角度可以在设置里设成默认。' },
-    { el: function () { return D3.focusRect(); }, pad: 0.06, title: '车况直接显示在车上',
-      text: '车门、车窗、天窗、引擎盖、尾门开着，车上也跟着打开；大灯、转向灯、雾灯、倒车灯、氛围灯跟着亮；插上充电枪充电口会打开，胎压标在轮子旁边。' },
-    { el: function () { return document.querySelector('#pgCar .stats'); }, pad: 0.1, title: '底部数据',
-      text: '电量、油量、续航、温度跟着车机实时变化。想看别的（纯电续航、车内温度、总里程……）可以在设置里换，最多 4 项。' },
-    { el: function () { return $('cGears'); }, pad: 0.1, title: '挂 D 挡看胎压',
-      text: '挂 D 挡后镜头转到车顶上方往下看，四个轮胎的胎压都显示出来；挂回 P 挡转回原来的角度。' },
-    { el: function () { return $('setBtn'); }, pad: 0.08, title: '设置',
-      text: '车漆、轮毂和卡钳颜色，背景，默认视角，底部数据，唱片机样式，深浅色，画质，都在这里调。' },
     { el: inSet('import'), pad: 0.08, set: true, title: '换成你自己的车',
-      text: '点「导入车模」选一个 .glb 或 .gltf 文件，车门、车轮、玻璃会自动认出来；车漆、车灯不自动认，要换车漆颜色、让车灯亮，在「调整车模」里点一下选上，认错的也在那里改。下面用默认车模演示一遍。' },
+      text: '点右上角的齿轮打开设置，在「车模」里点「导入车模」选一个 .glb 或 .gltf 文件，车门、车轮、玻璃会自动认出来；车漆、车灯不自动认，要换车漆颜色、让车灯亮，在「调整车模」里点一下选上，认错的也在那里改。下面用默认车模演示一遍。' },
     // ---- 用默认车模演示调整车模 ----
     { el: inTune('.tsum'), pad: 0.06, title: '调整车模',
       text: '这里告诉你自动认出了哪些、没认出哪些。没认出的那一项，车况变了车上不会动，点下面那一项进去选上就好。',
@@ -78,18 +65,9 @@
       text: '想要车牌就在「车身」里：挑蓝牌、绿牌、黄牌或自定义颜色，点按键把车牌号敲进去；位置不对按住车上的车牌拖，宽度、角度用滑块调。后车牌贴在尾门上时，开尾门会跟着翻起来。',
       acts: function () { return [tap(inTune('[data-a="back"]'), 800), tap(inTune('[data-r="plate"]'), 1500), tap(inTune('[data-a="pon"]'), 1600), tap(inTune('.pk[data-v="粤"]'), 600), tap(inTune('.pk[data-v="B"]'), 900), dragPlate, pause(600)]; } },
     { el: inTune('.tune-foot'), pad: 0.06, title: '完成或取消',
-      text: '顶上两个箭头是撤销、重做，改错了一步步退回去。改好了点「完成」保存，× 是取消、改的都不算；「导出车模包」能把调好的车发给别人。刚才的演示不会保存，这份说明在设置最下面能重新看。' }
+      text: '顶上两个箭头是撤销、重做，改错了一步步退回去。改好了点「导出车模包」得到一个 .glb，拷到车机上在 3D 车况（原生）的设置里点「导入车模包」；「完成」保存在这个网页里，× 是取消、改的都不算。刚才的演示不会保存，这份说明在设置最下面能重新看。' }
   ];
 
-  /** 几个元素合起来的范围（圆点那一排本身是整行宽的） */
-  function union(list) {
-    var r = null;
-    for (var i = 0; i < list.length; i++) {
-      var b = list[i].getBoundingClientRect();
-      r = r ? { left: Math.min(r.left, b.left), top: Math.min(r.top, b.top), right: Math.max(r.right, b.right), bottom: Math.max(r.bottom, b.bottom) } : { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
-    }
-    return r && { left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top };
-  }
   /** 元素露出来的那部分（在面板、列表里滚出去的部分不算） */
   function shownRect(el) {
     var a = el.getBoundingClientRect(), r = { left: a.left, top: a.top, right: a.right, bottom: a.bottom };
@@ -106,24 +84,24 @@
   function rem() { return parseFloat(getComputedStyle(document.documentElement).fontSize) || 50; }
   function text(v) { return typeof v === 'function' ? v() : v; }
 
-  /** 等车况页建好、进场动画走完再开始。again：设置里点了重新查看（不管看没看过；进场动画已经走完了，等镜头从侧面转回来就行） */
+  /** 等车况页建好、进场动画走完再开始。again：设置里点了重新查看（不管看没看过；设置面板开着也开始；进场动画已经走完了，等一下就行） */
   function wait(again) {
     clearTimeout(timer);
     if (!again && seen()) return;
     var i = window.D3 && D3.info();
-    if (i && i.live === 'car' && i.ready) timer = setTimeout(function () { if (D3.info().live === 'car' && !D3Set.isOpen() && !tuneOn()) start(again); else wait(again); }, again ? 900 : 2400);
+    if (i && i.live === 'car' && i.ready) timer = setTimeout(function () { if (D3.info().live === 'car' && (again || !D3Set.isOpen()) && !tuneOn()) start(again); else wait(again); }, again ? 900 : 2400);
     else timer = setTimeout(function () { wait(again); }, 400);
   }
-  /** again：设置里点了重新查看（右上角有关闭，随时退出）；第一次打开没有关闭，要看完 */
+  /** again：设置里点了重新查看；两种都能随时用右上角关闭退出 */
   function start(again) {
-    STEPS = ALL.filter(function (s) { return !s.two || $('dots').children.length > 1; }); // 唱片机页关了就只有一页：不讲左右滑
+    STEPS = ALL;
     var dots = $('guideDots');
     dots.innerHTML = '';
     for (var i = 0; i < STEPS.length; i++) dots.appendChild(document.createElement('i'));
     dots.className = 'guide-dots' + (STEPS.length > 10 ? ' many' : '');
     opened = false; demo = {};
     box.style.setProperty('--acc', D3Set.pick('paint').acc);
-    box.className = 'guide on first' + (again ? '' : ' must'); // first：第一步亮框直接出现在位置上，不从角落移过来
+    box.className = 'guide on first'; // first：第一步亮框直接出现在位置上，不从角落移过来
     show(0);
     setTimeout(function () { box.classList.remove('first'); }, 50);
     track();
@@ -408,7 +386,7 @@
   // 只等 click 的话按久一点浏览器当成长按、不发 click，引导就不翻页），并拦掉后面补发的 click；鼠标走 click
   function act(target) {
     if (step < 0) return;
-    if (target.closest && target.closest('#guideSkip')) { if (!box.classList.contains('must')) finish(); }
+    if (target.closest && target.closest('#guideSkip')) finish();
     else if (!acting) next();
   }
   var down = null;
@@ -421,11 +399,9 @@
     act(e.target);
   });
   box.addEventListener('click', function (e) { act(e.target); });
-  // 设置里"重新查看引导"：关掉设置，回到车况页，等车建好再从第一步开始
+  // 设置里"重新查看引导"：等车建好再从第一步开始（第一步就在设置面板里，面板不用关）
   D3Set.on(function (k) {
     if (k !== 'act:guide' || step >= 0) return;
-    D3Set.close();
-    if (D3.page() !== 0) D3.go(0);
     wait(true);
   });
   wait();

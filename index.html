@@ -51,26 +51,8 @@
       })();
     </script>
 
-    <section class="pg pg-vinyl" id="pgVinyl">
-      <div class="bg"><i class="glow" id="vGlowA"></i><i class="glow" id="vGlowB"></i></div>
-      <div class="ui">
-        <div class="v-meta">
-          <div class="v-state" id="vState">正在播放</div>
-          <div class="v-title" id="vTitle"></div>
-          <div class="v-artist" id="vArtist"></div>
-        </div>
-        <div class="v-lyrics" id="vLyrics"><div class="v-ly" id="vLy"></div></div>
-        <div class="v-ctl">
-          <button type="button" class="v-btn" id="vPrev" aria-label="上一首"><svg viewBox="0 0 24 24"><path d="M6.5 5.5h2.2v13H6.5z M18.5 6.2v11.6L9.8 12z"></path></svg></button>
-          <button type="button" class="v-btn big" id="vToggle" aria-label="播放"><svg class="i-play" viewBox="0 0 24 24"><path d="M8.5 5.8v12.4L18.6 12z"></path></svg><svg class="i-pause" viewBox="0 0 24 24"><path d="M7.2 5.5h3.4v13H7.2z M13.4 5.5h3.4v13h-3.4z"></path></svg></button>
-          <button type="button" class="v-btn" id="vNext" aria-label="下一首"><svg viewBox="0 0 24 24"><path d="M15.3 5.5h2.2v13h-2.2z M5.5 6.2v11.6L14.2 12z"></path></svg></button>
-        </div>
-        <div class="v-empty" id="vEmpty">车机上还没有在放的歌</div>
-      </div>
-    </section>
-
   </div>
-  <div class="dots" id="dots"><i></i><i></i></div>
+  <div class="dots" id="dots"></div>
   <button type="button" class="set-btn" id="setBtn" aria-label="设置"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.3 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.4a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8z"></path></svg></button>
   <!-- 全屏键（fullscreen.js）：宿主有这个功能才显示；横屏在齿轮左边、竖屏在齿轮下面，在全屏页里是"恢复小屏" -->
   <button type="button" class="fs-btn" id="fsBtn" aria-label="全屏" hidden></button>
@@ -99,18 +81,11 @@
           <div class="acts"><button type="button" class="act" data-act="viewSave">把打开设置前的角度设为默认</button></div></div>
         <div class="set-group">底部数据</div>
         <div class="set-row col"><span class="set-lb">显示哪几项<small>选 1～4 项，按点的顺序排；满 4 项再点会换掉最后一项</small></span><div class="tags" id="setStats"></div></div>
-        <div class="set-group">唱片机</div>
-        <div class="set-row col"><div class="set-sub"><span class="set-lb">唱片机页<small>关掉后只剩车况页，不用左右滑</small></span><button type="button" class="sw" data-k="vinyl" aria-label="唱片机页"><i></i></button></div>
-          <div class="set-more" id="setVinylMore">
-            <span class="set-sl">底座</span><div class="seg"><button type="button" data-k="vBase" data-v="cream">奶白</button><button type="button" data-k="vBase" data-v="walnut">胡桃木</button><button type="button" data-k="vBase" data-v="black">哑光黑</button><button type="button" data-k="vBase" data-v="silver">银色</button></div>
-            <span class="set-sl">唱片</span><div class="seg"><button type="button" data-k="vDisc" data-v="black">黑胶</button><button type="button" data-k="vDisc" data-v="red">红胶</button><button type="button" data-k="vDisc" data-v="blue">蓝胶</button><button type="button" data-k="vDisc" data-v="clear">透明</button></div>
-            <span class="set-sl">转速</span><div class="seg"><button type="button" data-k="vRpm" data-v="16">16 转</button><button type="button" data-k="vRpm" data-v="20">20 转</button><button type="button" data-k="vRpm" data-v="33">33 转</button></div>
-          </div></div>
         <div class="set-group">显示</div>
         <div class="set-row col"><span class="set-lb">深浅色</span><div class="seg"><button type="button" data-k="theme" data-v="auto">跟随车机</button><button type="button" data-k="theme" data-v="light">浅色</button><button type="button" data-k="theme" data-v="dark">深色</button></div></div>
         <div class="set-row" id="rowFsBar" hidden><span class="set-lb">全屏时收起状态栏<small>只在全屏页生效；每次进全屏先显示，这里开着会自动再收起</small></span><button type="button" class="sw" data-k="fsBar" aria-label="全屏时收起状态栏"><i></i></button></div>
         <div class="set-row"><span class="set-lb">胎压标签<small>轮子旁边的胎压</small></span><button type="button" class="sw" data-k="labels" aria-label="胎压标签"><i></i></button></div>
-        <div class="set-row"><span class="set-lb">进场动画<small>镜头转进来、迎宾灯、唱片落下</small></span><button type="button" class="sw" data-k="intro" aria-label="进场动画"><i></i></button></div>
+        <div class="set-row"><span class="set-lb">进场动画<small>镜头转进来、迎宾灯</small></span><button type="button" class="sw" data-k="intro" aria-label="进场动画"><i></i></button></div>
         <div class="set-group">性能</div>
         <div class="set-row col"><span class="set-lb">画质<small id="setQualNote"></small></span><div class="seg"><button type="button" data-k="quality" data-v="eco">低</button><button type="button" data-k="quality" data-v="std">标准</button><button type="button" data-k="quality" data-v="high">高</button><button type="button" data-k="quality" data-v="ultra">极致</button></div></div>
         <div class="set-row col"><span class="set-lb">帧率<small>转车、开门这些动的时候每秒画多少帧；静止时不画，和帧率、画质都没关系</small></span><div class="seg"><button type="button" data-k="fps" data-v="30">30 帧</button><button type="button" data-k="fps" data-v="60">60 帧（流畅）</button></div></div>
@@ -170,7 +145,6 @@
 <script src="carsel.js"></script>
 <script src="wraptune.js"></script>
 <script src="cartune.js"></script>
-<script src="vinyl.js"></script>
 <script src="guide.js"></script>
 </body>
 </html>

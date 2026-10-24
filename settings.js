@@ -3,7 +3,7 @@
    （展开色相 / 饱和度 / 亮度三个滑块，不靠系统取色器）；面板的强调色（开关、选中的分段）跟着车漆颜色走。车况页打开时镜头转到侧面展示车身（car3d.js 的 focus）。
    车模（导入 / 调整 / 恢复默认，carmodel.js、cartune.js）、背景（三套渐变跟着深浅色走，或者自己的图片 + 压暗）、
    默认视角（水平角度、俯视角、车的大小、视野四个滑块，拖动时车况页转到默认视角预览；也能把打开设置前的角度设为默认）、
-   底部数据（选 1～4 项）、唱片机页（开关、底座、唱片、转速）。
+   底部数据（选 1～4 项）。
    按钮类的操作（data-act）不存设置，发给订阅的人：on(fn) 收到 'act:名字'。
    对外：window.D3Set = { get(key), set(key, value), pick(key), on(fn(key)) → 取消, isOpen(), close(), opts, STATS }。全部 ES5。 */
 (function () {
@@ -39,9 +39,6 @@
     finish: ['preset', 'gloss', 'metal', 'pearl', 'satin', 'matte', 'frost', 'candy', 'chrome', 'flip'],
     theme: ['auto', 'light', 'dark'],
     bg: ['studio', 'warm', 'cool', 'image'],
-    vBase: ['cream', 'walnut', 'black', 'silver'],
-    vDisc: ['black', 'red', 'blue', 'clear'],
-    vRpm: ['16', '20', '33'],
     quality: ['eco', 'std', 'high', 'ultra'],
     fps: ['30', '60']
   };
@@ -81,9 +78,8 @@
   var VIEW = ['viewAz', 'viewEl', 'viewZoom', 'viewFov'];
   var DEF = { paint: 'red', rim: 'silver', caliper: 'red', finish: 'preset', paintHex: HEX.paintHex, rimHex: HEX.rimHex, calHex: HEX.calHex, theme: 'auto',
     bg: 'studio', bgDim: 0.25, viewAz: -0.72, viewEl: 0.2, viewZoom: 1, viewFov: 27, stats: ['bat', 'fuel', 'range', 'temp'],
-    vinyl: true, vBase: 'cream', vDisc: 'black', vRpm: '20',
     labels: true, intro: true, quality: 'eco', fps: '60', aa: false, fsBar: false };
-  var BOOL = { labels: 1, intro: 1, vinyl: 1, aa: 1, fsBar: 1 };
+  var BOOL = { labels: 1, intro: 1, aa: 1, fsBar: 1 };
   var s = load(), fns = [];
   // 现在这台车模自己的车漆：{ color 材质里的颜色、css 小球上显示的颜色、metal、rough、coat }，没标出车身时 null（原厂质感只参考 metal）
   var modelPaint = null;
@@ -252,7 +248,6 @@
     $('setRimName').textContent = api.pick('rim').name;
     $('setCaliperName').textContent = api.pick('caliper').name + (s.caliper === 'custom' || s.caliper === 'model' ? '' : '色');
     $('setBgImg').className = 'set-more' + (s.bg === 'image' ? ' on' : '');
-    $('setVinylMore').className = 'set-more' + (s.vinyl ? ' on' : '');
     panel.style.setProperty('--acc', api.pick('paint').acc);
   }
   function toggle(on) {

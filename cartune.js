@@ -1369,7 +1369,7 @@
   $('tuneExportJs').addEventListener('click', function () { var m = car().model(); exported(function (pr) { return D3Model.exportDefault(m.rec, cfg, pr); }, 'car-model.js 导出好了：替换卡片 zip 里的同名文件，打包出去就是默认车模'); });
 
   // ================= 导入、恢复默认（设置里的按钮） =================
-  /** 车况页建好了再做（在唱片机页就先滑过去）；返回 true：本来就在车况页（建着的可能是旧车模，要重新载入） */
+  /** 车况页建好了再做；返回 true：本来就在车况页（建着的可能是旧车模，要重新载入） */
   function toCar() {
     var i = D3.info(), was = i.live === 'car';
     if (was && i.ready) return Promise.resolve(true);

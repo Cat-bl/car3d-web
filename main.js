@@ -1,4 +1,4 @@
-/* demo3d：three.js 3D 示例卡片的外壳。两页左右滑切换：3D 车况 / 3D 唱片机（设置里可以关掉唱片机页，只剩一页时没有圆点、不能滑）。
+/* demo3d：three.js 3D 示例卡片的外壳。现在只有 3D 车况一页（唱片机页删了；按页组织的那套还留着：只有一页时没有圆点、不能滑）。
    同一时间只有当前页在运行：只有当前页建了 3D 场景、开着定时器和车机订阅；滑到别的页停稳后，旧页的场景、几何体、材质、贴图、定时器、订阅全部释放，
    再建新页（方便单独测每一页的消耗）。滑动途中两页的背景、文字和画布整条一起平移（像素 transform，交给合成线程），不画 3D 帧。
    车机 GPU 弱：只有一个 WebGL 画布（挂在当前页里）；按需渲染，画面不变就一帧都不画，页面要动时 update() 返回要的帧率，动完就停；
@@ -247,13 +247,11 @@
     fast.rt = null;
   }
 
-  // ================= 显示哪些页（唱片机页可以关掉） =================
-  function enabled(p) { return p.id !== 'vinyl' || D3Set.get('vinyl'); }
-  /** 按设置重排：关掉的页藏起来；正开着的页被关掉就回到第一页；圆点按页数画（只有一页就不显示） */
+  // ================= 页面和圆点 =================
+  /** 圆点按页数画（只有一页就不显示） */
   function refresh() {
     var id = shown[cur] ? shown[cur].id : null;
-    shown = pages.filter(enabled);
-    pages.forEach(function (p) { p.el.style.display = enabled(p) ? '' : 'none'; });
+    shown = pages.slice();
     var i = 0;
     shown.forEach(function (p, k) { if (p.id === id) i = k; });
     cur = i;
@@ -662,7 +660,6 @@
   D3Set.on(function (k) {
     if (k === 'quality' && renderer) quality();
     if (k === 'open' && live && ready && live.focus) live.focus(D3Set.isOpen());
-    if (k === 'vinyl') refresh();
     if (k === 'aa' && renderer && D3Set.get('aa') !== aaOn) setTimeout(function () { location.reload(); }, 350); // 等开关的动画走完
   });
 
@@ -700,7 +697,7 @@
   }
 
   window.D3 = {
-    add: function (p) { pages.push(p); shown = pages.filter(enabled); },
+    add: function (p) { pages.push(p); shown = pages.slice(); },
     /** 调整车模时锁住：不切页，按哪里都交给当前页 */
     lock: function (on) { locked = on; },
     /** 底部一条提示，几秒后消失（msg 为空：马上收起） */
