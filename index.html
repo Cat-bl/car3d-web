@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<script src="viewport.js"></script>
+<title>3D 示例（抗锯齿开关）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <!-- 两页排成一条，左右滑时整条平移；每页：背景 → 3D 画布（只挂在当前页里，main.js 插进来）→ 文字和按钮 -->
+  <div class="strip" id="strip">
+
+    <section class="pg pg-car" id="pgCar">
+      <div class="bg"></div>
+      <div class="ui">
+        <div class="c-head">
+          <div class="gears" id="cGears"><i>P</i><i>R</i><i>N</i><i>D</i></div>
+          <div class="c-speed" id="cSpeed"><b>0</b><small>km/h</small></div>
+          <div class="chips"><span class="sysi" id="cSys"></span><span class="chip" id="cPower">—</span><button type="button" class="chip demo" id="cDemo">调试数据</button></div>
+        </div>
+        <!-- 下面那行字：最严重的一级（最多两条）+ 还有几条；不止一条时点开列出全部（car3d.js 的 statuses） -->
+        <div class="c-msg" id="cStatus"><div class="c-list"></div><div class="c-row"><button type="button" class="c-pill"><i></i><span></span><b></b></button><button type="button" class="c-all" id="cAll">全部车况 ›</button></div></div>
+        <!-- 车况图标（carstat.js）：左列座舱、右列驾驶和能源，开着 / 有异常才亮；竖屏合成车上面一排 -->
+        <div class="tt tt-l" id="ttL"></div><div class="tt tt-r" id="ttR"></div>
+        <div class="c-hint" id="cHint">按住车身左右拖，转着看</div>
+        <div class="stats">
+          <div class="st" id="cBat"><span>电量</span><b>—</b><i class="bar"><i></i></i></div>
+          <div class="st" id="cFuel"><span>油量</span><b>—</b><i class="bar"><i></i></i></div>
+          <div class="st" id="cRange"><span>总续航</span><b>—</b></div>
+          <div class="st" id="cTemp"><span>车外</span><b>—</b></div>
+        </div>
+        <div class="tp off" id="tp-frontLeft"><p><span>左前</span><b></b><i></i></p></div>
+        <div class="tp off" id="tp-frontRight"><p><span>右前</span><b></b><i></i></p></div>
+        <div class="tp off" id="tp-rearLeft"><p><span>左后</span><b></b><i></i></p></div>
+        <div class="tp off" id="tp-rearRight"><p><span>右后</span><b></b><i></i></p></div>
+        <button type="button" class="roof-btn off" id="roofAc" aria-label="空调" hidden><svg viewBox="0 0 24 24"><path d="M11.2 9.9C9.6 6.6 10.4 2 14.3 1.4c3.2-.5 4.6 2.9 2.6 5.7-1.4 2-3.5 3.1-5.7 2.8z"></path><path d="M11.2 9.9C9.6 6.6 10.4 2 14.3 1.4c3.2-.5 4.6 2.9 2.6 5.7-1.4 2-3.5 3.1-5.7 2.8z" transform="rotate(90 12 12)"></path><path d="M11.2 9.9C9.6 6.6 10.4 2 14.3 1.4c3.2-.5 4.6 2.9 2.6 5.7-1.4 2-3.5 3.1-5.7 2.8z" transform="rotate(180 12 12)"></path><path d="M11.2 9.9C9.6 6.6 10.4 2 14.3 1.4c3.2-.5 4.6 2.9 2.6 5.7-1.4 2-3.5 3.1-5.7 2.8z" transform="rotate(270 12 12)"></path><circle cx="12" cy="12" r="1.9"></circle></svg></button>
+        <div class="loading" id="cLoad">正在载入 3D 车模型</div>
+      </div>
+    </section>
+    <script>
+      // 一打开就用对深浅色和背景（不然先白后黑）：设置里选了浅色 / 深色就按设置；跟随车机时用上次车机报的日夜模式（car3d.js 存的），没有就按钟点猜，19～6 点深色
+      (function () {
+        var v = null, t = null, bg = null, h = new Date().getHours();
+        try { v = localStorage.getItem('d3-car-dark'); var st = JSON.parse(localStorage.getItem('d3-settings') || 'null') || {}; t = st.theme; bg = st.bg; } catch (e) {}
+        var d = t === 'dark' || (t !== 'light' && (v === '1' || (v !== '0' && (h >= 19 || h < 6))));
+        if (bg === 'warm' || bg === 'cool' || bg === 'image') document.getElementById('pgCar').className += ' bg-' + bg; // 背景也一开始就对（图片在 car3d.js 里从本地库读出来再铺上）
+        if (d) { document.getElementById('pgCar').className += ' dark'; document.getElementById('app').className += ' car-dark'; }
+      })();
+    </script>
+
+    <section class="pg pg-vinyl" id="pgVinyl">
+      <div class="bg"><i class="glow" id="vGlowA"></i><i class="glow" id="vGlowB"></i></div>
+      <div class="ui">
+        <div class="v-meta">
+          <div class="v-state" id="vState">正在播放</div>
+          <div class="v-title" id="vTitle"></div>
+          <div class="v-artist" id="vArtist"></div>
+        </div>
+        <div class="v-lyrics" id="vLyrics"><div class="v-ly" id="vLy"></div></div>
+        <div class="v-ctl">
+          <button type="button" class="v-btn" id="vPrev" aria-label="上一首"><svg viewBox="0 0 24 24"><path d="M6.5 5.5h2.2v13H6.5z M18.5 6.2v11.6L9.8 12z"></path></svg></button>
+          <button type="button" class="v-btn big" id="vToggle" aria-label="播放"><svg class="i-play" viewBox="0 0 24 24"><path d="M8.5 5.8v12.4L18.6 12z"></path></svg><svg class="i-pause" viewBox="0 0 24 24"><path d="M7.2 5.5h3.4v13H7.2z M13.4 5.5h3.4v13h-3.4z"></path></svg></button>
+          <button type="button" class="v-btn" id="vNext" aria-label="下一首"><svg viewBox="0 0 24 24"><path d="M15.3 5.5h2.2v13h-2.2z M5.5 6.2v11.6L14.2 12z"></path></svg></button>
+        </div>
+        <div class="v-empty" id="vEmpty">车机上还没有在放的歌</div>
+      </div>
+    </section>
+
+  </div>
+  <div class="dots" id="dots"><i></i><i></i></div>
+  <button type="button" class="set-btn" id="setBtn" aria-label="设置"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.3 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.4a3.4 3.4 0 1 1 0-6.8 3.4 3.4 0 0 1 0 6.8z"></path></svg></button>
+  <!-- 全屏键（fullscreen.js）：宿主有这个功能才显示；横屏在齿轮左边、竖屏在齿轮下面，在全屏页里是"恢复小屏" -->
+  <button type="button" class="fs-btn" id="fsBtn" aria-label="全屏" hidden></button>
+  <!-- 设置面板（settings.js）：点面板外面关掉 -->
+  <div class="set" id="set">
+    <div class="set-card">
+      <div class="set-head"><b>设置</b><button type="button" class="set-x" id="setClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"></path></svg></button></div>
+      <div class="set-body">
+        <div class="set-group">车模</div>
+        <div class="set-row col"><span class="set-lb">当前车模<em id="setModelName"></em><small id="setModelCredit"></small></span>
+          <div class="acts"><button type="button" class="act pri" data-act="tune">调整车模</button><button type="button" class="act" data-act="import">导入车模</button><button type="button" class="act" data-act="modelReset" id="setModelReset">恢复默认</button><button type="button" class="act" data-act="wrap">贴纸、拉花</button></div>
+          <small class="set-note">支持 glTF（.glb / .gltf，.gltf 要和它的 .bin、贴图一起选上）。导入后自动识别车门、车轮、玻璃，不对的地方在"调整车模"里点一下改；车漆和灯不自动认：要换车漆颜色，在"调整车模"里点一下车身选上，灯在"调整车模"的灯光里自己选上。车机上点"导入车模"没反应的话，是车机不支持选文件：在电脑浏览器里打开这张卡片导入、调好，导出 car-model.js 替换进卡片再导入车机</small></div>
+        <div class="set-group">外观</div>
+        <div class="set-row col"><span class="set-lb">车漆<em id="setPaintName"></em><small id="setPaintTip"></small></span><div class="balls" id="setPaint"></div></div>
+        <div class="set-row col"><span class="set-lb">车漆质感</span><div class="seg many"><button type="button" data-k="finish" data-v="preset">原厂</button><button type="button" data-k="finish" data-v="gloss">亮面</button><button type="button" data-k="finish" data-v="metal">金属</button><button type="button" data-k="finish" data-v="pearl">珠光</button><button type="button" data-k="finish" data-v="satin">缎面</button><button type="button" data-k="finish" data-v="matte">哑光</button><button type="button" data-k="finish" data-v="frost">磨砂金属</button><button type="button" data-k="finish" data-v="candy">糖果</button><button type="button" data-k="finish" data-v="chrome">电镀</button><button type="button" data-k="finish" data-v="flip">变色龙</button></div></div>
+        <div class="set-row col"><span class="set-lb">轮毂<em id="setRimName"></em><small id="setRimTip"></small></span><div class="balls" id="setRim"></div></div>
+        <div class="set-row col"><span class="set-lb">刹车卡钳<em id="setCaliperName"></em><small id="setCaliperTip"></small></span><div class="balls" id="setCaliper"></div></div>
+        <div class="set-group">背景与视角</div>
+        <div class="set-row col"><span class="set-lb">车况页背景</span><div class="seg"><button type="button" data-k="bg" data-v="studio">影棚</button><button type="button" data-k="bg" data-v="warm">暖调</button><button type="button" data-k="bg" data-v="cool">冷调</button><button type="button" data-k="bg" data-v="image">图片</button></div>
+          <div class="set-more" id="setBgImg"><button type="button" class="act" data-act="bgImage">换一张图片</button><label class="rng"><span>压暗</span><input type="range" data-k="bgDim"><b id="setV-bgDim"></b></label></div></div>
+        <div class="set-row col"><div class="set-sub"><span class="set-lb">默认视角<small>拖动时车况页跟着转过去给你看；挂 D 挡时镜头转到车顶上方看四个轮子</small></span><button type="button" class="set-reset" data-reset="view">恢复默认</button></div>
+          <label class="rng"><span>水平角度</span><input type="range" data-k="viewAz"><b id="setV-viewAz"></b></label>
+          <label class="rng"><span>俯视角</span><input type="range" data-k="viewEl"><b id="setV-viewEl"></b></label>
+          <label class="rng"><span>车的大小</span><input type="range" data-k="viewZoom"><b id="setV-viewZoom"></b></label>
+          <label class="rng"><span>视野</span><input type="range" data-k="viewFov"><b id="setV-viewFov"></b></label>
+          <div class="acts"><button type="button" class="act" data-act="viewSave">把打开设置前的角度设为默认</button></div></div>
+        <div class="set-group">底部数据</div>
+        <div class="set-row col"><span class="set-lb">显示哪几项<small>选 1～4 项，按点的顺序排；满 4 项再点会换掉最后一项</small></span><div class="tags" id="setStats"></div></div>
+        <div class="set-group">唱片机</div>
+        <div class="set-row col"><div class="set-sub"><span class="set-lb">唱片机页<small>关掉后只剩车况页，不用左右滑</small></span><button type="button" class="sw" data-k="vinyl" aria-label="唱片机页"><i></i></button></div>
+          <div class="set-more" id="setVinylMore">
+            <span class="set-sl">底座</span><div class="seg"><button type="button" data-k="vBase" data-v="cream">奶白</button><button type="button" data-k="vBase" data-v="walnut">胡桃木</button><button type="button" data-k="vBase" data-v="black">哑光黑</button><button type="button" data-k="vBase" data-v="silver">银色</button></div>
+            <span class="set-sl">唱片</span><div class="seg"><button type="button" data-k="vDisc" data-v="black">黑胶</button><button type="button" data-k="vDisc" data-v="red">红胶</button><button type="button" data-k="vDisc" data-v="blue">蓝胶</button><button type="button" data-k="vDisc" data-v="clear">透明</button></div>
+            <span class="set-sl">转速</span><div class="seg"><button type="button" data-k="vRpm" data-v="16">16 转</button><button type="button" data-k="vRpm" data-v="20">20 转</button><button type="button" data-k="vRpm" data-v="33">33 转</button></div>
+          </div></div>
+        <div class="set-group">显示</div>
+        <div class="set-row col"><span class="set-lb">深浅色</span><div class="seg"><button type="button" data-k="theme" data-v="auto">跟随车机</button><button type="button" data-k="theme" data-v="light">浅色</button><button type="button" data-k="theme" data-v="dark">深色</button></div></div>
+        <div class="set-row" id="rowFsBar" hidden><span class="set-lb">全屏时收起状态栏<small>只在全屏页生效；每次进全屏先显示，这里开着会自动再收起</small></span><button type="button" class="sw" data-k="fsBar" aria-label="全屏时收起状态栏"><i></i></button></div>
+        <div class="set-row"><span class="set-lb">胎压标签<small>轮子旁边的胎压</small></span><button type="button" class="sw" data-k="labels" aria-label="胎压标签"><i></i></button></div>
+        <div class="set-row"><span class="set-lb">进场动画<small>镜头转进来、迎宾灯、唱片落下</small></span><button type="button" class="sw" data-k="intro" aria-label="进场动画"><i></i></button></div>
+        <div class="set-group">性能</div>
+        <div class="set-row col"><span class="set-lb">画质<small id="setQualNote"></small></span><div class="seg"><button type="button" data-k="quality" data-v="eco">低</button><button type="button" data-k="quality" data-v="std">标准</button><button type="button" data-k="quality" data-v="high">高</button><button type="button" data-k="quality" data-v="ultra">极致</button></div></div>
+        <div class="set-row col"><span class="set-lb">帧率<small>转车、开门这些动的时候每秒画多少帧；静止时不画，和帧率、画质都没关系</small></span><div class="seg"><button type="button" data-k="fps" data-v="30">30 帧</button><button type="button" data-k="fps" data-v="60">60 帧（流畅）</button></div></div>
+        <div class="set-row"><span class="set-lb">抗锯齿<small>车和字的边缘更平滑，更费显卡；切换后卡片会重新载入</small></span><button type="button" class="sw" data-k="aa" aria-label="抗锯齿"><i></i></button></div>
+        <div class="set-group">帮助</div>
+        <div class="set-row col" id="rowDebug" hidden><span class="set-lb">调试面板<small>电脑上没有车机时才有：卡片读到的车况、音乐、系统数据、宿主状态都在这里改，选了哪项才动哪项</small></span>
+          <div class="acts"><button type="button" class="act" data-act="debug">打开调试面板</button></div></div>
+        <div class="set-row col"><span class="set-lb">新手引导<small>第一次打开时的操作说明：转车、车况、挂 D 挡看胎压、换车模和调整车模</small></span>
+          <div class="acts"><button type="button" class="act" data-act="guide">重新查看引导</button></div></div>
+      </div>
+    </div>
+  </div>
+  <!-- 调整车模（cartune.js）：样式同设置面板；面板外面不挡手势（拖动转车、点一下点选部件） -->
+  <div class="set tune" id="tune">
+    <div class="set-card">
+      <div class="set-head"><b>调整车模</b><span class="tune-hist"><button type="button" class="set-x" id="tuneUndo" aria-label="撤销" disabled><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"></path></svg></button><button type="button" class="set-x" id="tuneRedo" aria-label="重做" disabled><svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"></path></svg></button></span><button type="button" class="set-x" id="tuneCancel" aria-label="取消"><svg viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"></path></svg></button></div>
+      <div class="tune-tip" id="tuneTip"></div>
+      <div class="set-body" id="tuneBody"></div>
+      <div class="tune-foot"><button type="button" class="act" id="tuneExport">导出车模包</button><button type="button" class="act" id="tuneExportJs">导出 car-model.js</button><button type="button" class="act pri" id="tuneDone">完成</button></div>
+    </div>
+  </div>
+  <div class="busy" id="busy"><div><b id="busyTitle">正在导入车模</b><span id="busyStep"></span><i class="busy-bar" id="busyBar"><i></i></i>
+    <p class="busy-q" id="busyQ"></p><div class="acts busy-acts"><button type="button" class="act pri" id="busyYes">简化（推荐）</button><button type="button" class="act" id="busyNo">保持原样</button></div></div></div>
+  <div class="toast" id="toast"></div>
+  <input type="file" id="fileModel" multiple hidden>
+  <input type="file" id="fileBg" hidden>
+  <input type="file" id="fileWrap" hidden>
+  <input type="file" id="fileFont" hidden>
+  <!-- 新手引导（guide.js）：第一次打开时出现 -->
+  <div class="guide" id="guide">
+    <div class="guide-hole" id="guideHole"></div>
+    <div class="guide-tip" id="guideTip">
+      <div class="guide-head"><span class="guide-step" id="guideStep"></span><button type="button" class="guide-x" id="guideSkip" aria-label="跳过引导"><svg viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"></path></svg></button></div>
+      <b id="guideTitle"></b>
+      <p id="guideText"></p>
+      <div class="guide-foot"><span class="guide-dots" id="guideDots"></span><button type="button" class="guide-next" id="guideNext">下一步</button></div>
+    </div>
+    <i class="guide-finger" id="guideFinger"><b></b></i>
+  </div>
+  <div class="nogl" id="nogl"><b>这台车机的浏览器内核不支持 3D（WebGL）</b><span>3D 示例卡片在这里显示不了</span></div>
+</div>
+<!-- 只能用普通 script，不能用 type="module"（本地文件方式加载时模块脚本会被拦）。three.js r149：最后一个带普通脚本版本、语法 Chromium 74 能跑的大版本 -->
+<script src="three.min.js"></script>
+<script src="three-addons.js"></script>
+<script src="env-hdr.js"></script>
+<!-- 调试宿主：电脑上没有车机宿主时装一个模拟的 uiplus（车机上什么都不做），要在 data.js、fullscreen.js 之前 -->
+<script src="debughost.js"></script>
+<script src="data.js"></script>
+<script src="fullscreen.js"></script>
+<script src="carstat.js"></script>
+<script src="settings.js"></script>
+<script src="main.js"></script>
+<script src="car-model.js"></script>
+<script src="carlamp.js"></script>
+<script src="carmodel.js"></script>
+<script src="car3d.js"></script>
+<script src="carsel.js"></script>
+<script src="wraptune.js"></script>
+<script src="cartune.js"></script>
+<script src="vinyl.js"></script>
+<script src="guide.js"></script>
+</body>
+</html>

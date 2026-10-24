@@ -1,0 +1,592 @@
+/* ===== 基础（勿改）：容器自适应 =====
+   设计基准：容器高 1052px。html 字号 = 容器高 / 10.52 → 1rem = 设计稿 100px。
+   设计稿 32px 写 .32rem；宽度方向用 %、vw、flex。容器宽度可变（拖中缝）、高度固定。 */
+html { font-size: calc(100vh / 10.52); -webkit-text-size-adjust: 100%; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-size: .2rem; /* 默认字号：根字号是 100px（1rem 基准），不写会继承成 100px */
+  background: #101113;
+  color: #14171c;
+  font-family: "MiSans", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans CN", "Microsoft YaHei", sans-serif;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+/* 细体数字（Outfit，OFL，只截了数字、冒号、百分号这些） */
+@font-face { font-family: "D3Num"; font-weight: 300; src: url("assets/fonts/outfit-digits-300.woff2") format("woff2"); unicode-range: U+20, U+25, U+2B-3A; }
+@font-face { font-family: "D3Num"; font-weight: 500; src: url("assets/fonts/outfit-digits-500.woff2") format("woff2"); unicode-range: U+20, U+25, U+2B-3A; }
+.st b, .tp b, .c-speed b { font-family: "D3Num", "MiSans", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-variant-numeric: tabular-nums; }
+
+/* ===== 外壳：两页排成一条（main.js 按像素平移），当前页里：背景 → 3D 画布 → 文字 ===== */
+.app { position: relative; width: 100%; height: 100%; overflow: hidden; touch-action: none; }
+.strip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; will-change: transform; }
+.pg { position: absolute; top: 0; height: 100%; overflow: hidden; }
+.bg, .ui, .gl { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.gl { display: block; transition: opacity .45s ease; }
+.ui { pointer-events: none; }
+.dots { position: absolute; left: 0; right: 0; top: .2rem; z-index: 2; display: flex; justify-content: center; will-change: transform; }
+.dots i { display: block; width: .1rem; height: .1rem; margin: 0 .05rem; padding: .08rem; background-clip: content-box; border-radius: .1rem;
+  background-color: rgba(255, 255, 255, .38); transition: width .3s ease, background-color .3s ease; }
+.dots i.on { width: .3rem; background-color: rgba(255, 255, 255, .92); }
+.app[data-at="car"]:not(.car-dark) .dots i { background-color: rgba(20, 23, 28, .2); }
+.app[data-at="car"]:not(.car-dark) .dots i.on { background-color: rgba(20, 23, 28, .75); }
+.nogl { display: none; position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 5; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0 .4rem; background: #101113; color: #e9edf5; text-align: center; }
+.nogl.on { display: flex; }
+.nogl b { font-size: .3rem; font-weight: 600; }
+.nogl span { margin-top: .12rem; font-size: .22rem; opacity: .7; }
+
+/* ===== 第一页：3D 车况 —— 展厅：白天浅灰无缝背景，车机夜间模式深色 ===== */
+.pg-car {
+  --ink: #14171c; --mute: rgba(20, 23, 28, .5); --line: rgba(20, 23, 28, .12); --chip: rgba(255, 255, 255, .7);
+  --ok: #0e9f57; --warn: #d97706; --bad: #dc2f2f; --info: #2575e6;
+  color: var(--ink);
+}
+.pg-car .bg { background: radial-gradient(ellipse 75% 46% at 50% 60%, #ffffff 0%, #f0f2f5 46%, #dde1e7 100%); }
+/* 深色背景是上面一层，切换时淡入淡出（渐变本身没法过渡） */
+.pg-car .bg::after { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .6s ease;
+  background: radial-gradient(ellipse 72% 44% at 50% 60%, #2b3038 0%, #16191e 52%, #0b0c0f 100%); }
+.pg-car.dark .bg::after { opacity: 1; }
+/* 夜景（调整车模进了灯的页）：最上面再盖一层近乎纯黑的，看得清灯；.bg 自己成一层，伪元素的层级不跑到车的画布上面去 */
+.pg-car .bg { isolation: isolate; }
+.pg-car .bg::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 1; opacity: 0; transition: opacity .6s ease;
+  background: radial-gradient(ellipse 72% 44% at 50% 60%, #15181d 0%, #08090b 55%, #000 100%); }
+.pg-car.night .bg::before { opacity: 1; }
+.pg-car.bg-warm .bg { background: radial-gradient(ellipse 75% 46% at 50% 60%, #fffaf3 0%, #f3ebe0 46%, #e2d6c6 100%); }
+.pg-car.bg-warm .bg::after { background: radial-gradient(ellipse 72% 44% at 50% 60%, #3b3027 0%, #1c1612 52%, #0d0a08 100%); }
+.pg-car.bg-cool .bg { background: radial-gradient(ellipse 75% 46% at 50% 60%, #f6fbff 0%, #e4edf7 46%, #cbd9ea 100%); }
+.pg-car.bg-cool .bg::after { background: radial-gradient(ellipse 72% 44% at 50% 60%, #1f2d42 0%, #101824 52%, #060a10 100%); }
+.pg-car.bg-image .bg { background: #1a1c20 center / cover no-repeat; }
+.pg-car.bg-image .bg::after { background: #000; opacity: var(--dim, .25); }
+.pg-car.dark, .pg-car.night {
+  --ink: #eef1f6; --mute: rgba(238, 241, 246, .5); --line: rgba(255, 255, 255, .13); --chip: rgba(28, 31, 37, .72);
+  --ok: #3fd98a; --warn: #ffb547; --bad: #ff6b6b; --info: #5aa2ff;
+}
+.c-head { position: absolute; left: .4rem; right: .4rem; top: .5rem; display: flex; align-items: center; }
+.gears { display: flex; }
+.gears i { display: block; width: .46rem; height: .46rem; margin-right: .06rem; border-radius: .12rem; font-style: normal; font-size: .28rem; font-weight: 600;
+  line-height: .46rem; text-align: center; color: var(--mute); transition: background-color .3s ease, color .3s ease; }
+.gears i.on { background: var(--ink); color: #f4f5f7; }
+.dark .gears i.on { color: #111317; }
+.c-speed { margin-left: .26rem; white-space: nowrap; }
+.c-speed b { font-size: .4rem; font-weight: 300; }
+.c-speed small { margin-left: .06rem; font-size: .2rem; color: var(--mute); }
+.chips { margin-left: auto; margin-right: .62rem; display: flex; } /* 右边留给设置齿轮 */
+.chip { margin-left: .1rem; padding: .05rem .16rem; border: 1px solid var(--line); border-radius: .3rem; font-size: .2rem; font-weight: 500; color: var(--mute); white-space: nowrap; }
+.chip.live { color: var(--ok); }
+.chip.live::before { content: ""; display: inline-block; width: .09rem; height: .09rem; margin-right: .08rem; border-radius: 50%; background: currentColor; vertical-align: .02rem; }
+.chip.demo { color: var(--warn); }
+button.chip { font-family: inherit; line-height: inherit; background: transparent; outline: none; -webkit-appearance: none; appearance: none; pointer-events: auto; cursor: pointer; } /* "调试数据"：点开调试面板 */
+.c-msg { position: absolute; z-index: 1; left: 0; right: 0; bottom: 1.66rem; display: flex; flex-direction: column; align-items: center; font-size: .26rem; font-weight: 500; }
+.c-row { display: flex; align-items: center; justify-content: center; max-width: 96%; }
+/* 一行：最严重的一级，后面"+N"还有几条；不止一条时能点开（背景淡淡一层，看得出能点） */
+.c-pill { min-width: 0; margin: 0; display: flex; align-items: center; padding: .07rem .22rem; border: 0; border-radius: .3rem; background: transparent; color: inherit;
+  font: inherit; text-align: left; outline: none; -webkit-appearance: none; appearance: none; transition: background-color .4s ease; }
+.c-pill span { line-height: 1.35; } /* 开着的东西多（几扇车窗各开了多少）时折行，不出框 */
+.c-pill b { flex: none; margin-left: .12rem; padding: 0 .12rem; border-radius: .16rem; background: var(--line); font-size: .2rem; font-weight: 600; line-height: .32rem; color: var(--mute); }
+.c-pill b:empty { display: none; }
+.c-msg.more .c-pill, .c-msg.go .c-pill { pointer-events: auto; cursor: pointer; background: var(--chip); } /* 只有一条、有对应位置：点了镜头转过去 */
+.c-msg i { flex: none; width: .12rem; height: .12rem; margin-right: .12rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 .05rem rgba(14, 159, 87, .16); }
+.c-msg.none { visibility: hidden; }
+.c-msg.info .c-pill i { background: var(--info); box-shadow: 0 0 0 .05rem rgba(37, 117, 230, .18); }
+.c-msg.warn .c-pill i { background: var(--warn); box-shadow: 0 0 0 .05rem rgba(217, 119, 6, .18); }
+.c-msg.bad .c-pill i { background: var(--bad); box-shadow: 0 0 0 .05rem rgba(220, 47, 47, .2); }
+/* 点开：全部列出来，按严重程度排，在那行字上面 */
+.c-list { display: none; max-width: 92%; margin-bottom: .1rem; padding: .1rem .24rem; border-radius: .22rem; background: var(--chip); box-shadow: 0 .06rem .2rem rgba(0, 0, 0, .12); }
+.c-msg.open .c-list { display: block; }
+.c-list p { display: flex; align-items: center; margin: .06rem 0; font-size: .24rem; line-height: 1.35; }
+.c-list { pointer-events: auto; }
+.c-list p.go { cursor: pointer; }
+.c-list p.go::after { content: "›"; margin-left: .14rem; color: var(--mute); } /* 有对应位置：点了镜头转过去 */
+.c-list .lv1 i { background: var(--info); box-shadow: none; }
+.c-list .lv2 i { background: var(--warn); box-shadow: none; }
+.c-list .lv3 i { background: var(--bad); box-shadow: none; }
+.c-list .lv0 i { box-shadow: none; }
+.c-hint { position: absolute; left: 0; right: 0; top: 1.22rem; text-align: center; font-size: .22rem; color: var(--mute); transition: opacity .6s ease, color .6s ease; }
+.c-hint.gone { opacity: 0; }
+.stats { position: absolute; left: .4rem; right: .4rem; bottom: .42rem; display: grid; grid-template-columns: repeat(4, 1fr); }
+.stats.n1 { grid-template-columns: 1fr; } .stats.n2 { grid-template-columns: 1fr 1fr; } .stats.n3 { grid-template-columns: repeat(3, 1fr); }
+.portrait .stats.n1 { grid-template-columns: 1fr; }
+.st { padding-left: .24rem; border-left: 1px solid var(--line); }
+.st:first-child { padding-left: 0; border-left: 0; }
+.st span { display: block; font-size: .2rem; color: var(--mute); letter-spacing: .04em; }
+.st b { display: block; margin-top: .02rem; font-size: .5rem; font-weight: 300; line-height: 1.1; white-space: nowrap; }
+.st b small { margin-left: .04rem; font-family: "MiSans", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; font-size: .2rem; font-weight: 400; color: var(--mute); }
+.bar { display: block; width: 72%; height: .05rem; margin-top: .08rem; border-radius: .03rem; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 100%; border-radius: .03rem; background: var(--ok); transform-origin: 0 0; transition: transform .8s ease; }
+.bar i.mid { background: var(--warn); }
+.bar i.low { background: var(--bad); }
+/* 胎压标签：car3d.js 每画一帧按轮胎位置摆（transform 像素）；固定宽度、内容居中，所以不用百分比位移 */
+.tp { position: absolute; left: 0; top: 0; width: 1.6rem; margin: -.24rem 0 0 -.8rem; display: flex; justify-content: center; will-change: transform; transition: opacity .25s ease; }
+.tp.off { opacity: 0; }
+/* 车顶上的圆形按钮（空调，风扇图标）：只在俯视时显示，跟着车顶走；开着蓝底白图标，关着浅色；按下去等车况回来时半透明 */
+.roof-btn { position: absolute; left: 0; top: 0; z-index: 1; width: .56rem; height: .56rem; margin: -.28rem 0 0 -.28rem; padding: .09rem; border: 0; border-radius: 50%;
+  background: var(--chip); color: var(--ink); box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .14); outline: none; cursor: pointer; pointer-events: auto; -webkit-appearance: none; appearance: none;
+  will-change: transform; transition: opacity .25s ease, background-color .3s ease, color .3s ease; }
+.roof-btn svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.roof-btn.on { background: var(--info); color: #fff; }
+.roof-btn.wait { opacity: .6; }
+.roof-btn.off { opacity: 0; pointer-events: none; }
+.app.tuning .roof-btn { visibility: hidden; }
+.portrait .app.set-open .roof-btn, .portrait .app.dbg-open .roof-btn, .portrait .app.ci-open .roof-btn { visibility: hidden; }
+.tp p { margin: 0; display: flex; align-items: baseline; padding: .05rem .14rem; border-radius: .3rem; background: var(--chip); white-space: nowrap;
+  box-shadow: 0 .02rem .1rem rgba(10, 14, 20, .08); }
+.tp span { font-size: .18rem; color: var(--mute); }
+.tp b { margin-left: .08rem; font-size: .24rem; font-weight: 500; }
+.tp.warn b { color: var(--warn); }
+.tp.bad b { color: var(--bad); }
+.loading { position: absolute; left: 0; right: 0; top: 48%; text-align: center; font-size: .22rem; color: var(--mute); opacity: 0; transition: opacity .3s ease, color .6s ease; }
+.loading.on { opacity: 1; }
+/* 深浅色切换时字、线、底色跟着背景一起 0.6 秒渐变 */
+.pg-car, .gears i, .chip, .c-speed small, .st, .st span, .st b small, .bar, .tp p, .tp span, .c-msg i, .c-pill b { transition: color .6s ease, background-color .6s ease, border-color .6s ease; }
+.portrait .c-head { left: .3rem; right: .3rem; top: .48rem; }
+.portrait .c-speed { position: absolute; left: 0; top: 1.22rem; margin: 0; } /* 车速在车况图标那一排下面（图标那一排和全屏键对齐） */
+.portrait .chip.demo { display: none; }
+.portrait .c-msg { bottom: 2.42rem; font-size: .24rem; }
+.portrait .c-hint { top: 2.3rem; }
+.portrait .stats { left: .3rem; right: .3rem; bottom: .32rem; grid-template-columns: 1fr 1fr; grid-row-gap: .22rem; }
+.portrait .stats.n3 .st:nth-child(3), .portrait .stats.n4 .st:nth-child(3) { padding-left: 0; border-left: 0; }
+.portrait .st b { font-size: .44rem; }
+
+/* ===== 第二页：3D 唱片机 —— 暗色暖光，背景按封面颜色晕染（两层交替淡入淡出） ===== */
+.pg-vinyl { --ink: #f5f1ea; --mute: rgba(245, 241, 234, .55); color: var(--ink); }
+.pg-vinyl .bg { background: #0f0e0d; }
+.glow { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
+.glow.on { opacity: 1; }
+.v-meta { position: absolute; left: 55%; right: .44rem; top: .98rem; }
+.v-state { display: flex; align-items: center; font-size: .2rem; color: var(--mute); letter-spacing: .1em; }
+.v-state::before { content: ""; width: .1rem; height: .1rem; margin-right: .1rem; border-radius: 50%; background: #ffb067; }
+.v-state.paused::before { background: rgba(245, 241, 234, .35); }
+.v-title { margin-top: .16rem; font-size: .46rem; font-weight: 700; line-height: 1.22; letter-spacing: .01em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.v-artist { margin-top: .1rem; font-size: .26rem; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 歌词：整首排成一列（vinyl.js 每换一句把整列平移到当前句，位移用像素），当前句亮、放大一点；上下边缘渐隐 */
+.v-lyrics { position: absolute; left: 55%; right: .44rem; top: 2.9rem; bottom: 1.66rem; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 70%, transparent 100%); }
+.v-ly { position: relative; padding-right: .3rem; transition: transform .6s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.v-ly p { margin: 0 0 .18rem; font-size: .3rem; font-weight: 600; line-height: 1.4; color: var(--mute); opacity: .75; transform-origin: 0 50%;
+  transition: color .4s ease, opacity .4s ease, transform .4s cubic-bezier(.2, .8, .2, 1); }
+.v-ly p.on { color: var(--ink); opacity: 1; transform: scale(1.08); }
+.v-ctl { position: absolute; left: 55%; right: .44rem; bottom: .5rem; display: flex; align-items: center; }
+.v-btn { display: flex; align-items: center; justify-content: center; width: .8rem; height: .8rem; margin-right: .2rem; padding: .22rem; border: 1px solid rgba(245, 241, 234, .2); border-radius: 50%;
+  background: transparent; color: var(--ink); outline: none; pointer-events: auto; cursor: pointer; -webkit-appearance: none; appearance: none; transition: transform .12s ease; }
+.v-btn.big { width: 1rem; height: 1rem; padding: .28rem; border: 0; background: var(--ink); color: #1a1714; }
+.v-btn:active { transform: scale(.9); }
+.v-btn svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.v-btn .i-pause, .v-btn.playing .i-play { display: none; }
+.v-btn.playing .i-pause { display: block; }
+.v-btn.off { display: none; }
+.v-empty { display: none; position: absolute; left: 55%; right: .44rem; top: 46%; font-size: .26rem; color: var(--mute); }
+.pg-vinyl.empty .v-empty { display: block; }
+.pg-vinyl.empty .v-meta, .pg-vinyl.empty .v-lyrics, .pg-vinyl.empty .v-ctl { display: none; }
+.portrait .v-meta { left: .3rem; right: .3rem; top: auto; bottom: 3rem; text-align: center; }
+.portrait .v-state { justify-content: center; }
+.portrait .v-title { margin-top: .1rem; font-size: .36rem; -webkit-line-clamp: 1; }
+.portrait .v-artist { font-size: .24rem; }
+.portrait .v-lyrics { left: .3rem; right: .3rem; top: auto; bottom: 1.46rem; height: 1.5rem; text-align: center;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%); } /* 竖屏：上一句、当前句、下一句 */
+.portrait .v-ly { padding: 0 .2rem; }
+.portrait .v-ly p { margin-bottom: .1rem; font-size: .24rem; transform-origin: 50% 50%; }
+.portrait .v-ctl { left: 0; right: 0; bottom: .36rem; justify-content: center; }
+.portrait .v-btn { margin: 0 .14rem; }
+.portrait .v-empty { left: 0; right: 0; top: auto; bottom: 1.6rem; text-align: center; }
+
+/* ===== 设置：右上角齿轮 + 面板（面板一直是深色，强调色 --acc 跟着车漆颜色） ===== */
+.set-btn { position: absolute; right: .26rem; top: .45rem; z-index: 5; width: .56rem; height: .56rem; padding: .12rem; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .1); color: #fff; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none;
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), opacity .3s ease, background-color .3s ease, color .3s ease; }
+.set-btn svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.set-btn.on { transform: rotate(90deg); opacity: 0; pointer-events: none; } /* 面板开着用面板上的关闭键 */
+.app[data-at="car"]:not(.car-dark) .set-btn { background: rgba(20, 23, 28, .07); color: #14171c; }
+.app[data-at="car"]:not(.car-dark) .set-btn.on { background: rgba(255, 255, 255, .1); color: #fff; }
+/* 全屏键（fullscreen.js）：样式同齿轮、一直显示；横屏在齿轮左边（状态胶囊往左让：has-fs），竖屏在齿轮下面；开设置面板、调整车模时跟着齿轮藏 */
+.fs-btn { position: absolute; right: .96rem; top: .45rem; z-index: 5; width: .56rem; height: .56rem; padding: .13rem; border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, .1); color: #fff; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none;
+  transition: opacity .3s ease, background-color .3s ease, color .3s ease; }
+.fs-btn svg { display: block; width: 100%; height: 100%; }
+.fs-btn:active { background: rgba(255, 255, 255, .22); }
+.set-btn.on + .fs-btn { opacity: 0; pointer-events: none; }
+.app.dbg-open .set-btn, .app.dbg-open .fs-btn, .app.ci-open .set-btn, .app.ci-open .fs-btn { opacity: 0; pointer-events: none; } /* 调试面板、全部车况开着：齿轮会盖住面板的关闭键 */
+.app[data-at="car"]:not(.car-dark) .fs-btn { background: rgba(20, 23, 28, .07); color: #14171c; }
+.app.has-fs .chips { margin-right: 1.32rem; }
+.set { --acc: #ff4b55; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; color: #eef1f6; }
+.set::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .4s ease;
+  background: linear-gradient(90deg, rgba(5, 7, 10, 0) 25%, rgba(5, 7, 10, .55) 100%); }
+.set.on { pointer-events: auto; }
+.set.on::before { opacity: 1; }
+.set-card { position: absolute; right: .2rem; top: .2rem; bottom: .2rem; width: 46%; display: flex; flex-direction: column; border-radius: .32rem; overflow: hidden;
+  background: linear-gradient(160deg, rgba(38, 42, 52, .96) 0%, rgba(15, 17, 22, .97) 70%); border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 .3rem .8rem rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08);
+  opacity: 0; transform: perspective(14rem) translate3d(30vw, 0, 0) rotateY(-28deg); transform-origin: 100% 50%;
+  transition: transform .55s cubic-bezier(.2, .8, .2, 1), opacity .35s ease; }
+.set-card::before { content: ""; position: absolute; left: .3rem; right: .3rem; top: 0; height: .03rem; background: linear-gradient(90deg, rgba(0, 0, 0, 0), var(--acc), rgba(0, 0, 0, 0)); }
+.set.on .set-card { opacity: 1; transform: perspective(14rem) translate3d(0, 0, 0) rotateY(0deg); }
+.set-head { display: flex; align-items: center; justify-content: space-between; padding: .26rem .2rem .04rem .32rem; }
+.set-head b { font-size: .34rem; font-weight: 700; letter-spacing: .04em; }
+.set-x { width: .56rem; height: .56rem; padding: .14rem; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08); color: #eef1f6; outline: none; -webkit-appearance: none; appearance: none; }
+.set-x svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.set-x[disabled] { opacity: .28; }
+.tune-hist { display: flex; margin-left: auto; margin-right: .14rem; } /* 调整车模：撤销、重做 */
+.tune-hist .set-x { margin-left: .1rem; padding: .13rem; }
+.set-body { flex: 1; overflow-x: hidden; overflow-y: auto; touch-action: pan-y; padding: 0 .32rem .3rem; }
+.set-body::-webkit-scrollbar, .tlist::-webkit-scrollbar { width: .1rem; }
+.set-body::-webkit-scrollbar-track, .tlist::-webkit-scrollbar-track { background: transparent; }
+.set-body::-webkit-scrollbar-thumb, .tlist::-webkit-scrollbar-thumb { border: .03rem solid transparent; border-radius: .05rem; background: rgba(255, 255, 255, .16); background-clip: padding-box; }
+.set-body::-webkit-scrollbar-button, .tlist::-webkit-scrollbar-button { display: none; }
+.set-group { margin: .22rem 0 .02rem; font-size: .2rem; letter-spacing: .18em; color: rgba(238, 241, 246, .4); }
+.set-row { display: flex; align-items: center; justify-content: space-between; padding: .16rem 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.set-row.col { flex-direction: column; align-items: stretch; }
+.set-lb { font-size: .26rem; font-weight: 500; }
+.set-lb em { margin-left: .14rem; font-style: normal; font-size: .22rem; color: var(--acc); transition: color .4s ease; }
+.set-lb small { display: block; margin-top: .04rem; font-size: .19rem; font-weight: 400; color: rgba(238, 241, 246, .45); }
+.balls { display: flex; flex-wrap: wrap; margin-top: .14rem; }
+/* 小球：底色是选项颜色（行内样式），上面叠高光和暗部，看着像一颗上了漆的球 */
+.ball { width: .5rem; height: .5rem; margin: 0 .2rem .06rem 0; padding: 0; border: 0; border-radius: 50%; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none;
+  background-image: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .85) 0, rgba(255, 255, 255, .25) 13%, rgba(255, 255, 255, 0) 32%),
+    radial-gradient(circle at 60% 112%, rgba(255, 255, 255, .22) 0, rgba(255, 255, 255, 0) 45%), linear-gradient(160deg, rgba(255, 255, 255, .1), rgba(0, 0, 0, .38));
+  box-shadow: inset 0 -.05rem .1rem rgba(0, 0, 0, .4), 0 .04rem .1rem rgba(0, 0, 0, .5);
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1), box-shadow .3s ease; }
+.ball.on { transform: scale(1.14); box-shadow: inset 0 -.05rem .1rem rgba(0, 0, 0, .4), 0 0 0 .035rem #16191f, 0 0 0 .07rem var(--acc), 0 0 .24rem var(--acc); }
+.seg { display: flex; margin-top: .14rem; padding: .05rem; border-radius: .3rem; background: rgba(255, 255, 255, .06); }
+.seg button { flex: 1; padding: .1rem 0; border: 0; border-radius: .26rem; background: transparent; color: rgba(238, 241, 246, .6); font-family: inherit; font-size: .22rem; outline: none;
+  -webkit-appearance: none; appearance: none; transition: background-color .3s ease, color .3s ease; }
+.seg.many { flex-wrap: wrap; } /* 选项多（车漆质感）：一行 5 个，排两行 */
+.seg.many button { flex: 0 0 20%; }
+.seg button.on { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), 0 .02rem .1rem rgba(0, 0, 0, .3); }
+.sw { position: relative; flex: none; width: .78rem; height: .44rem; margin-left: .2rem; padding: 0; border: 0; border-radius: .22rem; background: rgba(255, 255, 255, .14); outline: none;
+  -webkit-appearance: none; appearance: none; transition: background-color .3s ease; }
+.sw i { position: absolute; left: .05rem; top: .05rem; width: .34rem; height: .34rem; border-radius: 50%; background: #fff; box-shadow: 0 .02rem .06rem rgba(0, 0, 0, .4);
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.sw.on { background: var(--acc); }
+/* 滑块：已选部分是强调色（--p 由 settings.js 写） */
+.set-sub { display: flex; align-items: flex-start; justify-content: space-between; }
+.set-reset { flex: none; padding: .06rem .16rem; border: 1px solid rgba(255, 255, 255, .14); border-radius: .2rem; background: transparent; color: rgba(238, 241, 246, .7);
+  font-family: inherit; font-size: .2rem; outline: none; -webkit-appearance: none; appearance: none; }
+.rng { display: flex; align-items: center; margin-top: .1rem; }
+.rng span { flex: none; width: .9rem; font-size: .22rem; color: rgba(238, 241, 246, .7); }
+.rng b { flex: none; width: 1rem; text-align: right; font-size: .22rem; font-weight: 500; color: var(--acc); }
+.rng input { flex: 1; min-width: 0; height: .44rem; margin: 0 .1rem; padding: 0; background: transparent; outline: none; -webkit-appearance: none; appearance: none; }
+.rng input::-webkit-slider-runnable-track { height: .06rem; border-radius: .03rem;
+  background: linear-gradient(90deg, var(--acc) 0, var(--acc) var(--p, 50%), rgba(255, 255, 255, .14) var(--p, 50%)); }
+.rng input::-webkit-slider-thumb { width: .34rem; height: .34rem; margin-top: -.14rem; border: 0; border-radius: 50%; background: #fff; -webkit-appearance: none; appearance: none;
+  box-shadow: 0 0 0 .04rem var(--acc), 0 .02rem .08rem rgba(0, 0, 0, .4); }
+.sw.on i { transform: translate3d(.34rem, 0, 0); }
+/* 打开时一行行依次浮上来 */
+.set.on .set-body > * { animation: setIn .5s cubic-bezier(.2, .8, .2, 1) backwards; }
+.set.on .set-body.still > * { animation: none; } /* 调整车模改个选项重画：不再浮上来一遍 */
+@keyframes setIn { from { opacity: 0; transform: translate3d(.6rem, 0, 0); } }
+/* ===== 新手引导：遮罩上留一个亮框（外面一圈呼吸光），旁边说明气泡；气泡的写法同设置面板，跟着车况页深浅色变 ===== */
+.guide { --acc: #ff4b55; display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 6; overflow: hidden;
+  /* 浅色（车况页白天） */
+  --g-mask: rgba(18, 22, 30, .5); --g-mask2: rgba(18, 22, 30, .16); --g-bg: linear-gradient(160deg, #ffffff 0%, #f1f3f6 75%); --g-top: #ffffff; --g-bottom: #f1f3f6; --g-ink: #14171c;
+  --g-mute: rgba(20, 23, 28, .6); --g-line: rgba(20, 23, 28, .08); --g-x: rgba(20, 23, 28, .06); --g-dot: rgba(20, 23, 28, .16); --g-shadow: 0 .24rem .7rem rgba(20, 30, 50, .24); }
+/* 深色（车况页夜间）：和设置面板一样 */
+.app.car-dark .guide { --g-mask: rgba(6, 8, 12, .7); --g-mask2: rgba(6, 8, 12, .3); --g-bg: linear-gradient(160deg, rgba(38, 42, 52, .98) 0%, rgba(15, 17, 22, .98) 70%); --g-top: #262a34; --g-bottom: #111317;
+  --g-ink: #eef1f6; --g-mute: rgba(238, 241, 246, .62); --g-line: rgba(255, 255, 255, .08); --g-x: rgba(255, 255, 255, .08); --g-dot: rgba(255, 255, 255, .22); --g-shadow: 0 .3rem .8rem rgba(0, 0, 0, .45); }
+.guide.on { display: block; animation: guideIn .45s ease backwards; }
+@keyframes guideIn { from { opacity: 0; } }
+.guide-hole { position: absolute; left: 0; top: 0; width: 0; height: 0; border-radius: .3rem; box-shadow: 0 0 0 200vmax var(--g-mask); /* 比屏幕对角线还大，亮框在角上时对面的角也盖得住 */
+  transition: left .45s cubic-bezier(.2, .8, .2, 1), top .45s cubic-bezier(.2, .8, .2, 1), width .45s cubic-bezier(.2, .8, .2, 1), height .45s cubic-bezier(.2, .8, .2, 1), border-radius .45s ease, box-shadow .6s ease; }
+.guide.first .guide-hole { transition: none; }
+.guide-hole::before { content: ""; position: absolute; left: -.04rem; top: -.04rem; right: -.04rem; bottom: -.04rem; border: .03rem solid var(--acc); border-radius: inherit; box-shadow: 0 0 .2rem var(--acc); }
+.guide-hole::after { content: ""; position: absolute; left: -.04rem; top: -.04rem; right: -.04rem; bottom: -.04rem; border: .03rem solid var(--acc); border-radius: inherit;
+  animation: guidePulse 1.8s ease-out infinite; }
+@keyframes guidePulse { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(1.12); } }
+.guide-tip { position: absolute; left: 0; top: 0; width: 4.8rem; max-width: calc(100% - .4rem); box-sizing: border-box; padding: .22rem .2rem .24rem .3rem; border-radius: .32rem;
+  background: var(--g-bg); border: 1px solid var(--g-line); box-shadow: var(--g-shadow); color: var(--g-ink); transition: background-color .6s ease, color .6s ease, opacity .2s ease; }
+.guide-tip::after { content: ""; position: absolute; left: .3rem; right: .3rem; top: 0; height: .03rem; background: linear-gradient(90deg, rgba(0, 0, 0, 0), var(--acc), rgba(0, 0, 0, 0)); }
+.guide-tip.in { animation: tipIn .45s cubic-bezier(.2, .8, .2, 1) backwards; }
+@keyframes tipIn { from { opacity: 0; transform: translate3d(0, .16rem, 0); } }
+/* 箭头指向亮框（--ax 由 guide.js 按亮框中心算） */
+.guide-tip::before { content: ""; position: absolute; left: var(--ax, 50%); width: .18rem; height: .18rem; margin-left: -.09rem; background: var(--g-top);
+  border-left: 1px solid var(--g-line); border-top: 1px solid var(--g-line); }
+.guide-tip.down::before { top: -.1rem; transform: rotate(45deg); }
+.guide-tip.up::before { bottom: -.1rem; background: var(--g-bottom); transform: rotate(225deg); }
+.guide-head { display: flex; align-items: center; justify-content: space-between; }
+.guide-step { font-size: .2rem; letter-spacing: .18em; color: var(--g-mute); }
+.guide-x { flex: none; width: .5rem; height: .5rem; padding: .13rem; border: 0; border-radius: 50%; background: var(--g-x); color: var(--g-ink); outline: none; -webkit-appearance: none; appearance: none; }
+.guide.must .guide-x { display: none; } /* 第一次打开：要看完，没有关闭；设置里重新查看时才有 */
+.guide-x svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.guide-tip b { display: block; margin-top: .02rem; padding-right: .1rem; font-size: .34rem; font-weight: 700; letter-spacing: .04em; }
+.guide-tip p { margin: .1rem .1rem 0 0; font-size: .22rem; line-height: 1.55; color: var(--g-mute); }
+.guide-foot { display: flex; align-items: center; justify-content: space-between; margin-top: .2rem; padding-right: .1rem; }
+.guide-dots { display: flex; }
+.guide-dots i { display: block; width: .1rem; height: .1rem; margin-right: .08rem; border-radius: .05rem; background: var(--g-dot); transition: width .3s ease, background-color .3s ease; }
+.guide-dots i.on { width: .3rem; background: var(--acc); }
+.guide-dots.many i { width: .08rem; height: .08rem; margin-right: .05rem; }
+.guide-dots.many i.on { width: .22rem; }
+/* 演示操作的时候：遮罩变淡（看得到点了哪里、车上发生了什么），说明气泡先收起来 */
+.guide.acting .guide-hole { box-shadow: 0 0 0 200vmax var(--g-mask2); }
+.guide.acting .guide-tip { opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .2s; }
+/* 演示的"手指"：位置由 guide.js 写 transform（px），按下时里面的圆缩一下、外面一圈散开 */
+.guide-finger { position: absolute; left: 0; top: 0; width: .56rem; height: .56rem; margin: -.28rem 0 0 -.28rem; opacity: 0; pointer-events: none;
+  transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity .25s ease; }
+.guide-finger.on { opacity: 1; }
+.guide-finger b { display: block; width: 100%; height: 100%; border-radius: 50%; background: rgba(255, 255, 255, .92); box-shadow: 0 0 0 .05rem var(--acc), 0 .06rem .2rem rgba(0, 0, 0, .4); }
+.guide-finger::after { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%; border: .04rem solid var(--acc); opacity: 0; box-sizing: border-box; }
+.guide-finger.press b { animation: fingerPress .36s ease; }
+.guide-finger.press::after { animation: fingerRing .6s ease-out; }
+@keyframes fingerPress { 50% { transform: scale(.72); } }
+@keyframes fingerRing { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(2.4); } }
+.guide-next { padding: .1rem .3rem; border: 0; border-radius: .3rem; background: var(--acc); color: #fff; font-family: inherit; font-size: .22rem; font-weight: 600; outline: none;
+  box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .18); -webkit-appearance: none; appearance: none; }
+/* 竖屏：面板从下面翻上来，占下面六成多 */
+.portrait .set-btn { top: .43rem; right: .22rem; }
+.portrait .fs-btn { top: 1.11rem; right: .22rem; }
+.portrait .app.has-fs .chips { margin-right: .62rem; }
+.portrait .set::before { background: linear-gradient(180deg, rgba(5, 7, 10, 0) 25%, rgba(5, 7, 10, .55) 100%); }
+.portrait .set-card { left: .16rem; right: .16rem; top: auto; bottom: .16rem; width: auto; height: 64%; transform-origin: 50% 100%;
+  transform: perspective(14rem) translate3d(0, 40vh, 0) rotateX(26deg); }
+.portrait .set.on .set-card { transform: perspective(14rem) translate3d(0, 0, 0) rotateX(0deg); }
+.portrait .ball { margin-right: .16rem; }
+
+/* ===== 设置里新加的：自定义颜色、标签、按钮、展开的子项 ===== */
+.ball.custom { background-color: var(--c, #3a7bd5); position: relative; }
+.ball.custom::after { content: ""; position: absolute; left: -.06rem; top: -.06rem; right: -.06rem; bottom: -.06rem; border-radius: 50%; z-index: -1;
+  background: conic-gradient(#ff4b4b, #ffd23f, #5be37a, #3fd5ff, #5b6cff, #e05bff, #ff4b4b); }
+.balls { position: relative; z-index: 0; }
+.ball.model { position: relative; background-color: var(--c, #9a0c13); } /* 原车颜色：外面一圈虚线，和预设的颜色区分开 */
+.ball.model::after { content: ""; position: absolute; left: -.07rem; top: -.07rem; right: -.07rem; bottom: -.07rem; border: .025rem dashed rgba(255, 255, 255, .6); border-radius: 50%; }
+.ball.model[disabled] { opacity: .35; cursor: default; }
+.hsl { display: none; margin-top: .06rem; }
+.hsl.on { display: block; }
+.hsl input[data-c="h"]::-webkit-slider-runnable-track { height: .1rem; border-radius: .05rem; background: linear-gradient(90deg, #f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33); }
+.hsl input[data-c="h"]::-webkit-slider-thumb { margin-top: -.12rem; }
+/* 饱和度、亮度的滑轨画成当前色相的渐变（--hue 是色相的度数）：一看就知道往哪拖是什么颜色 */
+.hsl input[data-c="s"]::-webkit-slider-runnable-track { height: .1rem; border-radius: .05rem; background: linear-gradient(90deg, hsl(var(--hue, 0), 0%, 55%), hsl(var(--hue, 0), 100%, 50%)); }
+.hsl input[data-c="l"]::-webkit-slider-runnable-track { height: .1rem; border-radius: .05rem; background: linear-gradient(90deg, #000, hsl(var(--hue, 0), 100%, 50%), #fff); }
+.hsl input[data-c="s"]::-webkit-slider-thumb, .hsl input[data-c="l"]::-webkit-slider-thumb { margin-top: -.12rem; }
+.acts { display: flex; flex-wrap: wrap; margin-top: .14rem; }
+.act { margin: 0 .14rem .1rem 0; padding: .1rem .24rem; border: 1px solid rgba(255, 255, 255, .16); border-radius: .3rem; background: rgba(255, 255, 255, .06); color: #eef1f6;
+  font-family: inherit; font-size: .22rem; outline: none; -webkit-appearance: none; appearance: none; transition: background-color .3s ease, border-color .3s ease; }
+.act.pri { border-color: transparent; background: var(--acc); color: #fff; font-weight: 600; box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .25); }
+.act.on { border-color: var(--acc); background: rgba(255, 255, 255, .14); }
+.act[disabled] { opacity: .35; }
+.set-note { display: block; font-size: .19rem; line-height: 1.5; color: rgba(238, 241, 246, .45); }
+.set-more { display: none; margin-top: .06rem; }
+.set-more.on { display: block; }
+.set-sl { display: block; margin-top: .16rem; font-size: .22rem; color: rgba(238, 241, 246, .7); }
+.tags { display: flex; flex-wrap: wrap; margin-top: .14rem; }
+.tag { position: relative; margin: 0 .14rem .14rem 0; padding: .1rem .22rem; border: 1px solid rgba(255, 255, 255, .14); border-radius: .3rem; background: transparent;
+  color: rgba(238, 241, 246, .65); font-family: inherit; font-size: .22rem; outline: none; -webkit-appearance: none; appearance: none; transition: background-color .3s ease, color .3s ease; }
+.tag.on { border-color: var(--acc); background: rgba(255, 255, 255, .1); color: #fff; }
+.tag.on::after { content: attr(data-n); position: absolute; right: -.1rem; top: -.12rem; width: .3rem; height: .3rem; border-radius: 50%; background: var(--acc); color: #fff;
+  font-size: .18rem; font-weight: 700; line-height: .3rem; text-align: center; }
+
+/* ===== 调整车模：样式同设置面板；面板外面不挡手势，也不压暗（要看着车点） ===== */
+/* 车牌页：号码显示条、点选键盘 */
+.pnum { margin: .12rem 0; border: .015rem solid currentColor; border-radius: .05rem; text-align: center; font-weight: 700; font-size: .3rem; line-height: .54rem; letter-spacing: .05rem; white-space: pre; }
+.pkeys { display: flex; flex-wrap: wrap; margin-top: .06rem; }
+.pkeys .tag { margin: 0 .05rem .05rem 0; min-width: .37rem; padding: .08rem 0; text-align: center; }
+.pkeys .tag:disabled { opacity: .28; }
+.pnum .pred { color: #e2232a; font-weight: inherit; } /* 警、应急是红字 */
+
+.tune::before { display: none; }
+.tune.on { pointer-events: none; }
+.tune.on .set-card { pointer-events: auto; }
+.app.tuning .set-btn, .app.tuning .fs-btn, .app.tuning .dots, .app.tuning .c-hint, .app.tuning .c-msg { visibility: hidden; }
+/* 横屏时调整车模的面板盖在状态胶囊上面（面板 96% 不透明、外面不压暗，胶囊会从面板顶上透出来） */
+html:not(.portrait) .app.tuning .chips { visibility: hidden; }
+.tune-tip { margin: .06rem .32rem 0; padding: .12rem .18rem; border-radius: .18rem; background: rgba(255, 255, 255, .06); font-size: .21rem; line-height: 1.5; color: rgba(238, 241, 246, .75); }
+.tune-tip b { color: var(--acc); font-weight: 600; }
+/* 调整车模主页：认出了什么（跟着面板滚走，不一直占着上面）；跳到哪一组 */
+.tsum { margin-top: .04rem; padding: .12rem .18rem; border-radius: .18rem; background: rgba(255, 255, 255, .06); font-size: .21rem; line-height: 1.5; color: rgba(238, 241, 246, .75); }
+.tsum b { color: var(--acc); font-weight: 600; }
+.tjump { display: flex; flex-wrap: wrap; margin-top: .12rem; }
+.tjump .act { margin: 0 .1rem .08rem 0; }
+.tune-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; padding: .12rem .24rem .2rem .32rem; border-top: 1px solid rgba(255, 255, 255, .06); }
+.tune-foot .act { margin: .1rem 0 0 .14rem; }
+/* 主页每一项：名字、状态、›（点了进这一项的页） */
+.trow { display: flex; align-items: center; width: 100%; min-height: .72rem; padding: .1rem 0; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .06); background: transparent; color: #eef1f6; font: inherit; text-align: left; cursor: pointer; }
+.trow .set-lb { flex: 1; }
+.trow-n { flex: none; margin-right: .14rem; font-size: .2rem; color: rgba(238, 241, 246, .5); }
+.trow-n.ok { color: var(--acc); }
+.trow-go { flex: none; width: .13rem; height: .13rem; margin-right: .08rem; border: solid rgba(238, 241, 246, .45); border-width: .03rem .03rem 0 0; transform: rotate(45deg); }
+.trow-tip { margin-top: .08rem; font-size: .2rem; line-height: 1.5; color: rgba(238, 241, 246, .55); }
+.trow-tip b { font-weight: 600; color: #eef1f6; }
+/* 一项的页：返回、名字、状态；选零件的办法；圈选的工具 */
+.tpage-h { display: flex; align-items: center; margin: .14rem 0 .12rem; }
+.tpage-h b { flex: 1; min-width: 0; margin-left: .16rem; font-size: .3rem; font-weight: 600; }
+.tpage-h .trow-n { margin-right: 0; }
+.tback { flex: none; padding: .08rem .22rem; border: 1px solid rgba(255, 255, 255, .16); border-radius: .3rem; background: rgba(255, 255, 255, .06); color: #eef1f6; font: inherit; font-size: .22rem; }
+.tune .seg + .trow-tip, .tune .trow-tip + .seg { margin-top: .12rem; }
+.sel-bar { display: flex; align-items: center; margin-top: .14rem; }
+.sel-bar span { flex: 1; min-width: 0; font-size: .22rem; color: rgba(238, 241, 246, .75); }
+.sel-bar .act { margin: 0 0 0 .1rem; }
+.tclear { margin-top: .22rem; }
+.lballs .ball { background-color: var(--c); }
+/* 贴纸页（wraptune.js）：贴纸列表（小图 + 名字 + 贴在哪）、选条纹模板、文字输入框、字体列表（用各自的字体显示） */
+.wrow { min-height: .9rem; }
+.wthumb { flex: none; display: flex; align-items: center; justify-content: center; width: 1.1rem; height: .66rem; margin-right: .18rem; border-radius: .1rem;
+  background: repeating-conic-gradient(rgba(255, 255, 255, .1) 0 25%, rgba(255, 255, 255, .03) 0 50%) 0 0 / .16rem .16rem; overflow: hidden; }
+.wthumb img { max-width: 100%; max-height: 100%; }
+.wthumb.icon { background: rgba(255, 255, 255, .06); color: #eef1f6; }
+.wthumb svg { width: 100%; height: 100%; }
+.wtpl { display: grid; grid-template-columns: 1fr 1fr; grid-gap: .14rem; margin-top: .14rem; }
+.portrait .wtpl-b small { display: none; } /* 竖屏：两列、不放说明（进去以后页顶上有） */
+.wtpl-b { display: flex; flex-direction: column; align-items: flex-start; padding: .14rem .16rem; border: 1px solid rgba(255, 255, 255, .12); border-radius: .2rem; background: rgba(255, 255, 255, .05);
+  color: #eef1f6; font: inherit; text-align: left; cursor: pointer; }
+.wtpl-b svg { width: 1.6rem; height: .8rem; color: #eef1f6; }
+.wtpl-b b { margin-top: .06rem; font-size: .24rem; font-weight: 600; }
+.wtpl-b small { margin-top: .04rem; font-size: .2rem; line-height: 1.4; color: rgba(238, 241, 246, .55); }
+.wtext { display: block; box-sizing: border-box; width: 100%; margin-top: .1rem; padding: .14rem .18rem; border: 1px solid rgba(255, 255, 255, .18); border-radius: .16rem; background: rgba(255, 255, 255, .06);
+  color: #fff; font: inherit; font-size: .26rem; outline: none; -webkit-appearance: none; }
+.wtext:focus { border-color: var(--acc); }
+textarea.wtext { min-height: .9rem; resize: none; line-height: 1.4; }
+.wfold { border-style: dashed; } /* 折叠的一组：点了展开 */
+.wfold.on { border-style: solid; }
+.wplaces .act { padding: .1rem .2rem; }
+.wfonts { display: flex; flex-wrap: wrap; margin-top: .1rem; }
+.wfont { font-size: .26rem; }
+.wfont.on::after { display: none; } /* 选中不画右上角的计数圆点 */
+.wfont-x { margin-left: .14rem; padding: .02rem .1rem; border-radius: .2rem; background: rgba(255, 90, 80, .25); font-family: MiSans, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  font-size: .19rem; font-style: normal; color: #ffd7d3; }
+.set-sl small { margin-left: .12rem; font-size: .2rem; color: rgba(238, 241, 246, .45); }
+.lballs .ball.auto { background: conic-gradient(#7fd6ff, #d63cff, #ff6a3d, #ffd9a0, #7fd6ff); }
+/* 竖屏圈选：面板缩成一条工具栏（说明藏起来），车占上面六成 */
+.portrait .tune.painting .set-card { height: 46%; }
+.portrait .tune.painting .set-head, .portrait .tune.painting .tune-foot, .portrait .tune.painting .tune-tip, .portrait .tune.painting .set-body .trow-tip { display: none; }
+.portrait .tune.painting .tpage-h { margin-top: .16rem; }
+/* 从列表选：车模的材质 / 节点树，点一项放进 / 拿出这一项 */
+.tlist { max-height: 3.9rem; margin-top: .04rem; padding: .04rem .1rem; overflow-y: auto; touch-action: pan-y; border-radius: .16rem; background: rgba(0, 0, 0, .24); }
+.titem { display: flex; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.titem:last-child { border-bottom: 0; }
+.tfold { position: relative; flex: none; width: .4rem; height: .6rem; padding: 0; border: 0; background: transparent; }
+button.tfold::before { content: ''; position: absolute; left: .15rem; top: .22rem; border-style: solid; border-width: .08rem 0 .08rem .11rem; border-color: transparent transparent transparent rgba(238, 241, 246, .65); transition: transform .2s ease; }
+button.tfold.open::before { transform: rotate(90deg); }
+.tpick { display: flex; flex: 1; align-items: center; min-width: 0; min-height: .6rem; padding: .08rem 0; border: 0; background: transparent; color: #eef1f6; font: inherit; font-size: .24rem; text-align: left; }
+.tpick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tpick small { flex: none; max-width: 45%; margin-left: .1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .2rem; color: rgba(238, 241, 246, .5); }
+.tsw { flex: none; width: .26rem; height: .26rem; margin-right: .12rem; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.tck { position: relative; flex: none; width: .3rem; height: .3rem; margin-left: .12rem; border: 2px solid rgba(255, 255, 255, .25); border-radius: 50%; box-sizing: border-box; }
+.titem.on .tck { border-color: var(--acc); background: var(--acc); }
+.titem.on .tck::after { content: ''; position: absolute; left: .075rem; top: .025rem; width: .07rem; height: .13rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.titem.some .tck { border-color: var(--acc); background: linear-gradient(90deg, var(--acc) 50%, transparent 50%); }
+.titem.on .tpick span { color: #fff; font-weight: 600; }
+/* 名字最多两行（零件名常常很长，一行只看得到开头），材质 / 零件数放在名字下面 */
+.tpick .tnm { display: flex; flex: 1; flex-direction: column; min-width: 0; font-style: normal; }
+.tpick .tnm span { display: -webkit-box; overflow: hidden; white-space: normal; word-break: break-all; line-height: 1.3; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tpick .tnm small { max-width: 100%; margin: .02rem 0 0; }
+
+/* ===== 导入车模的进度、提示 ===== */
+.busy { --acc: #ff4b55; display: none; position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 7; align-items: center; justify-content: center; background: rgba(5, 7, 10, .55); }
+.busy.on { display: flex; }
+.busy > div { display: flex; flex-direction: column; align-items: center; padding: .36rem .6rem; border-radius: .32rem; color: #eef1f6;
+  background: linear-gradient(160deg, rgba(38, 42, 52, .97) 0%, rgba(15, 17, 22, .98) 70%); box-shadow: 0 .3rem .8rem rgba(0, 0, 0, .45); }
+.busy b { font-size: .3rem; font-weight: 600; }
+.busy b::after { content: ""; display: inline-block; width: .26rem; height: .26rem; margin-left: .16rem; vertical-align: -.03rem; border: .03rem solid rgba(255, 255, 255, .25);
+  border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+.busy span { margin-top: .12rem; font-size: .22rem; color: rgba(238, 241, 246, .6); }
+/* 面数太多：问要不要简化（问的时候不转圈） */
+.busy > div { max-width: 82%; }
+.busy-q, .busy-acts { display: none; }
+/* 进度条：长度用 scaleX（合成线程上画，不重排）；还没有进度时不显示 */
+.busy-bar { display: none; width: 3.6rem; max-width: 100%; height: .06rem; margin-top: .18rem; border-radius: .03rem; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.busy-bar.on { display: block; }
+.busy-bar i { display: block; height: 100%; background: var(--acc); transform-origin: 0 0; transform: scaleX(0); transition: transform .3s ease; }
+.busy.ask .busy-bar { display: none; }
+.busy.ask .busy-q { display: block; margin: .16rem 0 0; font-size: .23rem; line-height: 1.6; color: rgba(238, 241, 246, .8); text-align: center; }
+.busy.ask .busy-acts { display: flex; flex-wrap: wrap; justify-content: center; margin-top: .2rem; }
+.busy.ask .busy-acts .act { margin: .06rem .1rem; padding: .14rem .34rem; font-size: .24rem; }
+.busy.ask b::after, .busy.ask span { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: absolute; left: 50%; bottom: 1.3rem; z-index: 8; width: 7rem; max-width: 90%; margin-left: -3.5rem; display: flex; justify-content: center; pointer-events: none;
+  opacity: 0; transform: translate3d(0, .2rem, 0); transition: opacity .3s ease, transform .3s ease; }
+.toast.on { opacity: 1; transform: translate3d(0, 0, 0); }
+.toast p { min-width: 0; margin: 0; padding: .14rem .3rem; border-radius: .3rem; background: rgba(22, 25, 31, .94); color: #eef1f6; font-size: .23rem; line-height: 1.5; text-align: center; word-break: break-word;
+  box-shadow: 0 .1rem .4rem rgba(0, 0, 0, .35); }
+.portrait .toast { width: 4.6rem; margin-left: -2.3rem; bottom: 2.9rem; }
+.app.tuning .toast { left: 27%; width: 4.6rem; margin-left: -2.3rem; bottom: 1.6rem; } /* 调整车模时放在车那边，不压着面板 */
+.portrait .app.tuning .toast { left: 50%; top: .3rem; bottom: auto; }
+
+/* ================= 调试面板（debugpanel.js；电脑上没有车机、用调试宿主时才有）：样式同设置面板，面板外面照样能拖车 ================= */
+.dbg-tabs { margin: .1rem .32rem .04rem; }
+.dbg-tabs.seg.many button { flex: 0 0 33.33%; }
+.dbg-search { margin-top: .16rem; }
+.dbg-in { display: flex; align-items: center; margin-top: .12rem; }
+.dbg-in input, .dbg-search input { flex: 1; width: 100%; min-width: 0; height: .52rem; padding: 0 .16rem; border: 1px solid rgba(255, 255, 255, .16); border-radius: .14rem; background: rgba(255, 255, 255, .06);
+  color: #eef1f6; font-family: inherit; font-size: .22rem; outline: none; box-sizing: border-box; }
+.dbg-in input:focus, .dbg-search input:focus { border-color: var(--acc); }
+.dbg-in span { margin: 0 .14rem; font-size: .22rem; color: rgba(238, 241, 246, .7); }
+.dbg-grp { display: flex; align-items: baseline; justify-content: space-between; width: 100%; margin-top: .14rem; padding: .14rem .02rem; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .1);
+  background: transparent; color: #eef1f6; font-family: inherit; font-size: .25rem; font-weight: 600; text-align: left; outline: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.dbg-grp::after { content: "›"; margin-left: .12rem; color: rgba(238, 241, 246, .45); transition: transform .2s ease; }
+.dbg-grp.on::after { transform: rotate(90deg); }
+.dbg-grp small { flex: 1; margin-left: .16rem; font-size: .2rem; font-weight: 400; color: rgba(238, 241, 246, .45); }
+.dbg-it { padding: .12rem 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.dbg-top { display: flex; align-items: center; cursor: pointer; }
+.dbg-ck { position: relative; flex: none; width: .32rem; height: .32rem; margin-right: .14rem; border: .025rem solid rgba(255, 255, 255, .35); border-radius: .08rem; box-sizing: border-box; }
+.dbg-it.on .dbg-ck { border-color: var(--acc); background: var(--acc); }
+.dbg-it.on .dbg-ck::after { content: ""; position: absolute; left: .09rem; top: .03rem; width: .08rem; height: .15rem; border: solid #fff; border-width: 0 .03rem .03rem 0; transform: rotate(45deg); }
+.dbg-name { flex: 1; min-width: 0; font-size: .24rem; font-weight: 500; }
+.dbg-name small { display: block; margin-top: .02rem; font-size: .2rem; font-weight: 400; color: rgba(238, 241, 246, .45); word-break: break-all; }
+.dbg-val { flex: none; max-width: 45%; margin-left: .12rem; font-size: .22rem; font-weight: 500; color: rgba(238, 241, 246, .75); text-align: right; word-break: break-all; }
+.dbg-it.on .dbg-val { color: var(--acc); }
+.dbg-ctl { padding: 0 0 .04rem .46rem; }
+.dbg-ctl .seg button { font-size: .2rem; }
+.dbg-acts { display: flex; flex-wrap: wrap; margin-top: .12rem; }
+.dbg-acts .act { margin: 0 .1rem .08rem 0; padding: .08rem .18rem; font-size: .2rem; }
+.dbg-tracks { display: flex; flex-wrap: wrap; margin-top: .12rem; }
+.dbg-trk { width: 1.2rem; margin: 0 .12rem .12rem 0; padding: .06rem; border: 1px solid rgba(255, 255, 255, .14); border-radius: .14rem; background: transparent; color: #eef1f6;
+  font-family: inherit; font-size: .2rem; outline: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.dbg-trk.on { border-color: var(--acc); background: rgba(255, 255, 255, .08); }
+.dbg-trk img { display: block; width: 100%; margin-bottom: .04rem; border-radius: .1rem; }
+.dbg-empty { margin: .36rem .06rem; font-size: .24rem; line-height: 1.6; color: rgba(238, 241, 246, .6); }
+.dbg-play { display: flex; align-items: center; margin-top: .16rem; }
+.dbg-play .act { flex: none; margin: 0 .16rem 0 0; }
+.dbg-sub { margin: .08rem 0 0; font-size: .2rem; line-height: 1.5; color: rgba(238, 241, 246, .6); word-break: break-all; }
+.dbg-sub b { color: #eef1f6; }
+.dbg-log { padding: .1rem 0; border-bottom: 1px solid rgba(255, 255, 255, .06); font-size: .2rem; line-height: 1.45; word-break: break-all; }
+.dbg-log span { margin-right: .1rem; color: rgba(238, 241, 246, .45); }
+.dbg-log b { color: #eef1f6; font-weight: 600; }
+.dbg-log code { display: block; color: rgba(238, 241, 246, .65); font-family: Consolas, Menlo, monospace; }
+.dbg-log em { display: block; font-style: normal; color: #4cd38a; }
+.dbg-log.bad em { color: #ff6b6b; }
+.dbg-sum { align-self: center; margin-right: auto; font-size: .2rem; color: rgba(238, 241, 246, .6); }
+
+/* ===== 车况页：全部车况入口、车况图标（carstat.js）、顶栏系统图标、胎温 ===== */
+.c-all { flex: none; margin-left: .12rem; padding: .05rem .16rem; border: 1px solid var(--line); border-radius: .3rem; background: var(--chip); color: var(--mute);
+  font-family: inherit; font-size: .2rem; font-weight: 500; white-space: nowrap; outline: none; -webkit-appearance: none; appearance: none; pointer-events: auto; cursor: pointer; }
+.tt { position: absolute; top: 1.3rem; bottom: 2.3rem; display: flex; flex-direction: column; overflow: hidden; }
+.tt-l { left: .4rem; align-items: flex-start; }
+.tt-r { right: .4rem; align-items: flex-end; }
+.tti { display: flex; align-items: center; flex: none; margin-bottom: .1rem; padding: .05rem .16rem .05rem .1rem; border-radius: .3rem; background: var(--chip);
+  font-size: .21rem; font-weight: 500; color: var(--ink); white-space: nowrap; transition: color .6s ease, background-color .6s ease; }
+.tti svg { flex: none; width: .3rem; height: .3rem; margin-right: .08rem; }
+.tti span i { margin-left: .08rem; padding: 0 .08rem; border-radius: .1rem; background: var(--line); font-style: normal; font-size: .18rem; color: var(--mute); }
+.tti.on svg, .tti.blue svg, .tti.blue span { color: var(--info); }
+.tti.ok svg, .tti.ok span { color: var(--ok); }
+.tti.warn svg, .tti.warn span, .tti.warm svg { color: var(--warn); }
+.tti.bad svg, .tti.bad span { color: var(--bad); }
+.tti.modes { padding: .04rem; }
+.tti.modes b { margin: 0 .02rem; padding: .02rem .12rem; border-radius: .24rem; font-size: .19rem; font-weight: 700; letter-spacing: .04em; color: var(--ink); background: var(--line); }
+.tti.modes b.m-eco, .tti.modes b.m-ev { color: var(--ok); }
+.tti.modes b.m-sport { color: var(--bad); }
+.tti.modes b.m-comfort, .tti.modes b.m-hev { color: var(--info); }
+.tti.solo { padding: .05rem .1rem; }
+.tti.solo svg { margin-right: 0; } /* 只有图标（主驾系着安全带） */
+.portrait .tt-l { top: 1.14rem; bottom: auto; left: .3rem; right: .88rem; flex-direction: row; flex-wrap: nowrap; align-items: center; height: .5rem; } /* 一排，放不下的藏掉（告警排在前面） */
+.portrait .tt-l .tti { margin: 0 .08rem .08rem 0; font-size: .19rem; }
+.portrait .tt-r { display: none; }
+.portrait .app.set-open .tt, .portrait .app.dbg-open .tt, .portrait .app.ci-open .tt { visibility: hidden; } /* 竖屏开着面板：车挤到上面那一小块，车况图标会压在车上 */
+.app.tuning .tt, .app.tuning .sysi { visibility: hidden; }
+.sysi { display: flex; align-items: center; margin-right: .06rem; color: var(--ink); }
+.sysi .si { position: relative; display: flex; align-items: center; margin-left: .1rem; font-style: normal; }
+.sysi .si.dim { opacity: .4; }
+.sysi svg { width: .3rem; height: .3rem; }
+.sysi .bars rect { fill: currentColor; }
+.sysi .bars rect.off { fill-opacity: .25; }
+.sysi .wifi path.off { stroke-opacity: .25; }
+.sysi b { margin-left: .02rem; font-size: .17rem; font-weight: 700; }
+.sysi em { position: absolute; right: -.06rem; top: -.04rem; font-style: normal; font-size: .16rem; font-weight: 700; color: var(--warn); }
+.portrait .sysi .si:nth-child(n+3) { display: none; }
+.tp i { margin-left: .08rem; font-style: normal; font-size: .17rem; color: var(--mute); }
+.tp i:empty { display: none; }
+.tags-g { flex: 0 0 100%; margin: .06rem 0 .08rem; font-size: .19rem; letter-spacing: .1em; color: rgba(238, 241, 246, .45); }
+/* 全部车况（carinfo.js）：一行一项，名字在左、值在右 */
+.ci-row { display: flex; align-items: baseline; justify-content: space-between; padding: .1rem 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.ci-row span { flex: 1; min-width: 0; font-size: .23rem; color: rgba(238, 241, 246, .85); }
+.ci-row span small { display: block; font-size: .19rem; color: rgba(238, 241, 246, .4); }
+.ci-row b { flex: none; max-width: 55%; margin-left: .16rem; font-size: .23rem; font-weight: 500; text-align: right; color: #eef1f6; word-break: break-all; }
+.ci-row b.na { color: rgba(238, 241, 246, .38); font-weight: 400; }
+.ci-row b.warn { color: #ffb547; }
+.ci-wait { margin: .4rem .06rem; font-size: .24rem; color: rgba(238, 241, 246, .6); }
+.ci-note { margin-top: .2rem; }
