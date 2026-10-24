@@ -64,7 +64,7 @@
         <div class="set-group">车模</div>
         <div class="set-row col"><span class="set-lb">当前车模<em id="setModelName"></em><small id="setModelCredit"></small></span>
           <div class="acts"><button type="button" class="act pri" data-act="tune">调整车模</button><button type="button" class="act" data-act="import">导入车模</button><button type="button" class="act" data-act="modelReset" id="setModelReset">恢复默认</button><button type="button" class="act" data-act="wrap">贴纸、拉花</button></div>
-          <small class="set-note">支持 glTF（.glb / .gltf，.gltf 要和它的 .bin、贴图一起选上）。导入后自动识别车门、车轮、玻璃，不对的地方在"调整车模"里点一下改；车漆和灯不自动认：要换车漆颜色，在"调整车模"里点一下车身选上，灯在"调整车模"的灯光里自己选上。车机上点"导入车模"没反应的话，是车机不支持选文件：在电脑浏览器里打开这张卡片导入、调好，导出 car-model.js 替换进卡片再导入车机</small></div>
+          <small class="set-note">支持 glTF（.glb / .gltf，.gltf 要和它的 .bin、贴图一起选上），以前导出的 GLB 也能导入接着调。导入后自动识别车门、车轮、玻璃，不对的地方在"调整车模"里点一下改；车漆和灯不自动认：车身在"调整车模"里点一下选上，灯在"调整车模"的灯光里自己选上。调好后在"调整车模"底下点"导出为 GLB"，拷到车机上，在 3D 车况（原生）的设置里点"导入车模包"。下面的车漆颜色、背景、视角这些只影响这个网页，不会导出（原生版在它自己的设置里换）</small></div>
         <div class="set-group">外观</div>
         <div class="set-row col"><span class="set-lb">车漆<em id="setPaintName"></em><small id="setPaintTip"></small></span><div class="balls" id="setPaint"></div></div>
         <div class="set-row col"><span class="set-lb">车漆质感</span><div class="seg many"><button type="button" data-k="finish" data-v="preset">原厂</button><button type="button" data-k="finish" data-v="gloss">亮面</button><button type="button" data-k="finish" data-v="metal">金属</button><button type="button" data-k="finish" data-v="pearl">珠光</button><button type="button" data-k="finish" data-v="satin">缎面</button><button type="button" data-k="finish" data-v="matte">哑光</button><button type="button" data-k="finish" data-v="frost">磨砂金属</button><button type="button" data-k="finish" data-v="candy">糖果</button><button type="button" data-k="finish" data-v="chrome">电镀</button><button type="button" data-k="finish" data-v="flip">变色龙</button></div></div>
@@ -89,11 +89,11 @@
         <div class="set-group">性能</div>
         <div class="set-row col"><span class="set-lb">画质<small id="setQualNote"></small></span><div class="seg"><button type="button" data-k="quality" data-v="eco">低</button><button type="button" data-k="quality" data-v="std">标准</button><button type="button" data-k="quality" data-v="high">高</button><button type="button" data-k="quality" data-v="ultra">极致</button></div></div>
         <div class="set-row col"><span class="set-lb">帧率<small>转车、开门这些动的时候每秒画多少帧；静止时不画，和帧率、画质都没关系</small></span><div class="seg"><button type="button" data-k="fps" data-v="30">30 帧</button><button type="button" data-k="fps" data-v="60">60 帧（流畅）</button></div></div>
-        <div class="set-row"><span class="set-lb">抗锯齿<small>车和字的边缘更平滑，更费显卡；切换后卡片会重新载入</small></span><button type="button" class="sw" data-k="aa" aria-label="抗锯齿"><i></i></button></div>
+        <div class="set-row"><span class="set-lb">抗锯齿<small>车和字的边缘更平滑，更费显卡；切换后网页会重新载入</small></span><button type="button" class="sw" data-k="aa" aria-label="抗锯齿"><i></i></button></div>
         <div class="set-group">帮助</div>
-        <div class="set-row col" id="rowDebug" hidden><span class="set-lb">调试面板<small>电脑上没有车机时才有：卡片读到的车况、音乐、系统数据、宿主状态都在这里改，选了哪项才动哪项</small></span>
+        <div class="set-row col" id="rowDebug" hidden><span class="set-lb">调试面板<small>模拟车机的车况：在这里开门、开灯、挂挡、改胎压，看车模跟着怎么动（选了哪项才动哪项）</small></span>
           <div class="acts"><button type="button" class="act" data-act="debug">打开调试面板</button></div></div>
-        <div class="set-row col"><span class="set-lb">新手引导<small>第一次打开时的操作说明：转车、车况、挂 D 挡看胎压、换车模和调整车模</small></span>
+        <div class="set-row col"><span class="set-lb">新手引导<small>演示怎么导入车模、调整车模、导出为 GLB</small></span>
           <div class="acts"><button type="button" class="act" data-act="guide">重新查看引导</button></div></div>
       </div>
     </div>
@@ -104,7 +104,7 @@
       <div class="set-head"><b>调整车模</b><span class="tune-hist"><button type="button" class="set-x" id="tuneUndo" aria-label="撤销" disabled><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"></path></svg></button><button type="button" class="set-x" id="tuneRedo" aria-label="重做" disabled><svg viewBox="0 0 24 24"><path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"></path></svg></button></span><button type="button" class="set-x" id="tuneCancel" aria-label="取消"><svg viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6 10.6 12 5 6.4z"></path></svg></button></div>
       <div class="tune-tip" id="tuneTip"></div>
       <div class="set-body" id="tuneBody"></div>
-      <div class="tune-foot"><button type="button" class="act" id="tuneExport">导出车模包</button><button type="button" class="act" id="tuneExportJs">导出 car-model.js</button><button type="button" class="act pri" id="tuneDone">完成</button></div>
+      <div class="tune-foot"><button type="button" class="act" id="tuneExport">导出为 GLB</button><button type="button" class="act pri" id="tuneDone">完成</button></div>
     </div>
   </div>
   <div class="busy" id="busy"><div><b id="busyTitle">正在导入车模</b><span id="busyStep"></span><i class="busy-bar" id="busyBar"><i></i></i>

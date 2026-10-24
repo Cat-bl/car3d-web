@@ -95,14 +95,14 @@
   function listPage() {
     var l = L(), h = head('贴纸、拉花', l.length ? l.length + ' 张' : '没有');
     h += '<div class="acts"><button type="button" class="act pri" data-a="wAddS">+ 拉花</button><button type="button" class="act pri" data-a="wAddI">+ 图片</button><button type="button" class="act pri" data-a="wAddT">+ 文字</button></div>';
-    if (!l.length) return h + '<div class="trow-tip">还没有贴纸。拉花有现成的条纹、图案，也能在车上自己画；图片（痛车图）、文字加上以后，在车上点哪里就贴到哪里，还能顺着车身包过去。导出车模包时一起带走。</div>';
+    if (!l.length) return h + '<div class="trow-tip">还没有贴纸。拉花有现成的条纹、图案，也能在车上自己画；图片（痛车图）、文字加上以后，在车上点哪里就贴到哪里，还能顺着车身包过去。导出为 GLB 时一起带走。</div>';
     h += '<div class="wlist">' + l.slice().reverse().map(function (w) {
       var th = w.kind === 'stripe' ? '' : A.car().wrapThumb(w, 120); // 拉花缩成小图细线就没了：用模板的示意图
       return '<button type="button" class="trow wrow" data-a="wOpen" data-v="' + w.id + '"><span class="wthumb' + (w.kind === 'stripe' ? ' icon' : '') + '">' +
         (w.kind === 'stripe' ? '<svg viewBox="0 0 80 40">' + ICON[w.tpl] + '</svg>' : th ? '<img src="' + th + '" alt="">' : '') + '</span>' +
         '<span class="set-lb">' + name(w) + '<small>' + where(w) + '</small></span><i class="trow-go"></i></button>';
     }).join('') + '</div>';
-    return h + '<div class="trow-tip">排在上面的盖住下面的。贴在车门、引擎盖、尾门上的，开门开盖时跟着走；导出车模包时一起带走。</div>';
+    return h + '<div class="trow-tip">排在上面的盖住下面的。贴在车门、引擎盖、尾门上的，开门开盖时跟着走；导出为 GLB 时一起带走。</div>';
   }
   function addPage() {
     var h = head('加拉花', undefined, 'wBack'), T = W().TPL;

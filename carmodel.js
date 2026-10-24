@@ -1538,15 +1538,8 @@
     setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(u); }, 5000);
   }
   function fileName(n) { return String(n || '车模').replace(/[\\/:*?"<>|]+/g, ' ').trim() || '车模'; }
-  function b64(u8) { var s = '', i; for (i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
-  /** 车模包：GLB 里带上配置，别人导入就是调好的（几何压缩过，见 compress） */
+  /** 导出为 GLB（车模包）：GLB 里带上配置，原生版导入就是调好的（几何压缩过，见 compress） */
   function exportPack(rec, cfg, prog) { return packed(rec, cfg, prog).then(function (b) { download(b, fileName(rec.name) + '.glb', 'model/gltf-binary'); }); }
-  /** car-model.js：替换卡片 zip 里的同名文件，打包出去就是默认车模（几何压缩过，建车前 inflate 解开） */
-  function exportDefault(rec, cfg, prog) {
-    return packed(rec, cfg, prog).then(function (b) {
-      download('/* 3D 示例卡片的默认车模：' + fileName(rec.name) + '（车模包，带适配配置）。替换卡片里的 car-model.js 后重新打包。 */\nwindow.D3_CAR_GLB = \'' + b64(new Uint8Array(b)) + '\';\n', 'car-model.js', 'text/javascript');
-    });
-  }
   /** 导出时压缩几何（EXT_meshopt_compression，同 gltfpack 的存法）：顶点数据按属性模式、三角形索引按三角形模式编码，几何小一半左右，数据一点不变；
      贴图和别的数据原样。别人导入时（convert）、换进卡片当默认车模时（inflate）解开，解码器 25KB；编码器只在导出时加载。
      本机存的工作副本不压缩：拆零件、简化这些直接读原始数据。几种用法共用一个缓冲视图的（交错存放）、动画蒙皮的数据不压缩 */
@@ -2184,7 +2177,7 @@
 
   window.D3Model = {
     W70: W70, isW70: isW70, current: current, def: fallback, save: save, reset: reset, importFiles: importFiles,
-    exportPack: exportPack, exportDefault: exportDefault, compress: compress, inflate: inflate, withConfig: withConfig, info: info, read: readGLB,
+    exportPack: exportPack, compress: compress, inflate: inflate, withConfig: withConfig, info: info, read: readGLB,
     ids: ids, meshRefs: meshRefs, matRefs: matRefs, mats: mats, auto: auto, box: box, sanitize: sanitize, carve: carve,
     BODY_ROLES: BODY_ROLES, LIGHT_ROLES: LIGHT_ROLES, CUSTOM_LIGHTS: CUSTOM_LIGHTS, MOVERS: MOVERS, WINDOWS: WINDOWS, nameIs: nameIs, paintName: paintName, metalFix: metalFix, wind: wind,
     bgGet: bgGet, bgSet: bgSet, bgClear: bgClear,

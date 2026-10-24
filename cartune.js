@@ -830,11 +830,9 @@
     h += rng('env', '反光', 0.3, 2, 0.05, cfg.env || 1, function (v) { return Math.round(v * 100) + '%'; });
     h += rng('zoom', '远近', 0.6, 6, 0.05, zoom, function (v) { return Math.round(v * 100) + '%'; }) + '<div class="acts"><button type="button" class="act" data-a="viewAll">看全车</button></div></div>';
     GROUPS.forEach(function (g, i) { h += '<div class="set-group" data-g="' + i + '">' + g[0] + '</div>' + g[1].map(row).join('') + (g[0] === '灯光' ? cusRows() : ''); });
-    // 底下两个导出按钮是干嘛的
-    h += '<div class="set-group">导出、分享</div>' +
-      '<div class="trow-tip"><b>导出车模包</b>：一个 .glb 文件。发给别人，在设置 → 车模 → 导入车模里选它，就是你调好的这台车。</div>' +
-      '<div class="trow-tip"><b>导出 car-model.js</b>：把这台车做成卡片的默认车模。替换卡片 zip 里的同名文件、重新导入车机，打开就是这台车，什么都不用再调。车机上选不了文件，或者想把整张卡片发给别人时用。</div>' +
-      '<div class="trow-tip">车机上不一定存得下导出的文件，存不下就在电脑浏览器里打开这张卡片，导入同一个车模、调好再导出。</div>';
+    // 底下的导出按钮是干嘛的
+    h += '<div class="set-group">导出</div>' +
+      '<div class="trow-tip"><b>导出为 GLB</b>：得到一个 .glb 文件，车模和这里调好的都在里面。拷到车机上，在 3D 车况（原生）的设置里点「导入车模包」；以后想接着改，在这个网页里导入它就行。</div>';
     return h;
   }
   // ================= 车牌页：牌种、号码（点按键敲）、大小位置角度 =================
@@ -1365,8 +1363,7 @@
     go(function (f) { D3.toast('正在压缩车模 ' + Math.round(f * 100) + '%', 60000); }).then(function () { exporting = false; D3.toast(onCar ? NOSAVE : ok, 5000); },
       function (e) { exporting = false; D3.toast('导出失败：' + (e && e.message || ''), 4000); console.error(e); });
   }
-  $('tuneExport').addEventListener('click', function () { var m = car().model(); exported(function (pr) { return D3Model.exportPack(m.rec, cfg, pr); }, '车模包导出好了：发给别人，在设置 → 导入车模里选它'); });
-  $('tuneExportJs').addEventListener('click', function () { var m = car().model(); exported(function (pr) { return D3Model.exportDefault(m.rec, cfg, pr); }, 'car-model.js 导出好了：替换卡片 zip 里的同名文件，打包出去就是默认车模'); });
+  $('tuneExport').addEventListener('click', function () { var m = car().model(); exported(function (pr) { return D3Model.exportPack(m.rec, cfg, pr); }, 'GLB 导出好了：拷到车机上，在 3D 车况（原生）的设置里点「导入车模包」'); });
 
   // ================= 导入、恢复默认（设置里的按钮） =================
   /** 车况页建好了再做；返回 true：本来就在车况页（建着的可能是旧车模，要重新载入） */
@@ -1428,7 +1425,7 @@
         busy(false);
         var cut = res.tris < res.tris0 ? '，简化到 ' + Math.round(res.tris / 1000) / 10 + ' 万面（原来 ' + Math.round(res.tris0 / 1000) / 10 + ' 万）' : '';
         if (!res.ok) D3.toast('这台车机存不了车模，这次打开有效', 4000);
-        else if (res.cfg) D3.toast('车模包导入好了' + cut + (res.warn ? '。' + res.warn : ''), 4000);
+        else if (res.cfg) D3.toast('导入好了，带着以前调好的' + cut + (res.warn ? '。' + res.warn : ''), 4000);
         else { open(); D3.toast('导入好了' + cut + '，自动识别的部件在这里检查一下' + (res.warn ? '。' + res.warn : ''), 5000); }
       }, function (e) {
         if (!e || !e.user) console.error('导入车模失败', e); // 文件不对这类是给人看的提示，不算程序出错
